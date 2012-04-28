@@ -148,10 +148,25 @@ namespace Manos.Tool
 			get;
 			set;
 		}
-		
 
+		public string Browse {
+			get;
+			set;
+		}
+
+		public string DocumentRoot {
+			get;
+			set;
+		}
+		
 		public void Run ()
 		{
+			// Setup the document root
+			if (DocumentRoot != null)
+			{
+				System.IO.Directory.SetCurrentDirectory(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DocumentRoot));
+			}
+
 			// Load the config.
 			ManosConfig.Load ();
 			
@@ -167,7 +182,11 @@ namespace Manos.Tool
 			if (IPAddress != null)
 				listenAddress = Manos.IO.IPAddress.Parse (IPAddress);
 
+			app.StartInternal();
+
 			AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
+
+			//AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
 			if (SecurePort != null) {
 				AppHost.InitializeTLS ("NORMAL");
 				AppHost.SecureListenAt (new Manos.IO.IPEndPoint (listenAddress, SecurePort.Value), CertificateFile, KeyFile);
@@ -183,9 +202,38 @@ namespace Manos.Tool
 				AppHost.SecureSpdyListenAt (new System.Net.IPEndPoint (listenAddress, SecureSpdyPort.Value), CertificateFile, KeyFile);
 				Console.WriteLine ("Running {0} with SPDY on secure port {1}.", app, SecureSpdyPort);
 			}
+
+			if (Browse != null)
+			{
+				var hostname = IPAddress == null ? "http://localhost" : "http://" + IPAddress;
+				if (Port != 80)
+					hostname += ":" + Port.ToString();
+
+				if (Browse == "")
+				{
+					Browse = hostname;
+				}
+				if (Browse.StartsWith("/"))
+				{
+					Browse = hostname + Browse;
+				}
+
+				if (!Browse.StartsWith("http://") && !Browse.StartsWith("https://"))
+					Browse = "http://" + Browse;
+
+				AppHost.AddTimeout(TimeSpan.FromMilliseconds(10), RepeatBehavior.Single, Browse, DoBrowse);
+			}
+
 			AppHost.Start (app);
 		}
-		
+
+		private static void DoBrowse(ManosApp app, object user_data)
+		{
+			string BrowseTo = user_data as string;
+			Console.WriteLine("Launching {0}", BrowseTo);
+			System.Diagnostics.Process.Start(BrowseTo);
+		}
+
 		public void SetServerUser (string user)
 		{
 			if (user == null)
