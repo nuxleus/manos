@@ -105,6 +105,11 @@ namespace Manos.IO.Poll
 		{
 			throw new NotImplementedException ();
 		}
+
+		public override IStdin OpenStdin ()
+		{
+			return new Stdin (Loop);
+		}
 	}
 }
 

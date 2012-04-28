@@ -117,6 +117,8 @@
     <Compile Include="Manos.IO\Errors.cs" />
     <Compile Include="Manos.IO\IOException.cs" />
     <Compile Include="Manos.IO\OpenMode.cs" />
+    <Compile Include="Manos.IO\IStdin.cs" />
+    <Compile Include="Manos.IO.Libev\Stdin.cs" />
     <Compile Include="Manos.IO.Poll\Context.cs" />
     <Compile Include="Manos.IO.Poll\AsyncWatcher.cs" />
     <Compile Include="Manos.IO.Poll\CheckWatcher.cs" />
@@ -128,10 +130,7 @@
     <Compile Include="Manos.IO.Poll\Watcher.cs" />
     <Compile Include="Manos.IO.Poll\PrepareWatcher.cs" />
     <Compile Include="Manos.IO\Backend.cs" />
-    <Compile Include="Manos.IO\INotifier.cs" />
-    <Compile Include="Libev\Pipe.cs" />
-    <Compile Include="Manos.IO.Libev\Notifier.cs" />
-    <Compile Include="Manos.IO.Managed\Notifier.cs" />
+    <Compile Include="Manos.IO.Poll\Stdin.cs" />
   </ItemGroup>
   <Target Name="ListSources">
     <Message Text="@(Compile)" Importance="High" />

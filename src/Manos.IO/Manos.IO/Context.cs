@@ -306,12 +306,12 @@ namespace Manos.IO
 		public abstract IUdpSocket CreateUdpSocket (AddressFamily family);
 
 		/// <summary>
-		/// Creates a new notifier.
+		/// Opens the standard input descriptor for reading and readyness events.
 		/// </summary>
 		/// <returns>
-		/// The notifier.
+		/// The stdin.
 		/// </returns>
-		public abstract INotifier CreateNotifier (Action callback);
+		public abstract IStdin OpenStdin();
 	}
 }
 

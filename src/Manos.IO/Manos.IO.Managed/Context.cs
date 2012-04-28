@@ -226,9 +226,9 @@ namespace Manos.IO.Managed
 			return new UdpSocket (this, family);
 		}
 
-		public override INotifier CreateNotifier (Action callback)
+		public override IStdin OpenStdin ()
 		{
-			return new Notifier (this, callback);
+			throw new NotImplementedException ();
 		}
 	}
 }

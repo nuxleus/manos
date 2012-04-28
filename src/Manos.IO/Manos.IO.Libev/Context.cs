@@ -139,9 +139,9 @@ namespace Manos.IO.Libev
 			return new UdpSocket (this, family);
 		}
 
-		public override INotifier CreateNotifier (Action callback)
+		public override IStdin OpenStdin ()
 		{
-			return new Notifier (this, callback);
+			return new Stdin (this);
 		}
 	}
 }
