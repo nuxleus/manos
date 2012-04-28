@@ -3,6 +3,7 @@ using System.Text;
 using System.Collections.Generic;
 
 using Manos.IO;
+using Manos.IO.Managed;
 
 namespace Manos.Spdy
 {

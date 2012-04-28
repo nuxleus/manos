@@ -224,11 +224,11 @@ namespace Manos.Tool
 				{ "a|assembly=", v=> assembly = v},
 				{ "l|listen=", v => ipaddress = v },
 				{ "n|spdyport=", v => spdyport = v },
-				{ "N|securespdyport=", v => securespdyport = v }
+				{ "N|securespdyport=", v => securespdyport = v },
 				{ "l|listen=", v => ipaddress = v },
 				{ "b|browse=", v => browse = v },
-				{ "d|docroot=", v => docroot = v}
-			};
+				{ "d|docroot=", v => docroot = v},
+      };;
 			args = p.Parse(args);
 
 			ServerCommand cmd = new ServerCommand (Environment, args);

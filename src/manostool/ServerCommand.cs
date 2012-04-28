@@ -38,251 +38,282 @@ using Mono.Unix.Native;
 
 namespace Manos.Tool
 {
-	public class ServerCommand
-	{
-		private ManosApp app;
-		
-		private int? port;
-		private int? securePort;
-		private int? spdyport;
-		private int? securespdyport;
-		private string application_assembly;
-		
-		public ServerCommand (Environment env) : this (env, new List<string> ())
-		{
-		}
-		
-		public ServerCommand (Environment env, IList<string> args)
-		{
-			Environment = env;
-			Arguments = args;
-		}
-		
-		public Environment Environment {
-			get;
-			private set;
-		}
-		
-		public IList<string> Arguments {
-			get;
-			set;
-		}
-		
-		public string ApplicationAssembly {
-			get {
-				if (application_assembly == null)
-					return Path.GetFileName (Directory.GetCurrentDirectory ()) + ".dll";
-				return application_assembly;
-			}
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("value");
-				application_assembly = value;
-			}
-		}
-		
-		public int Port {
-			get { 
-				if (port == null)
-					return 8080;
-				return (int) port;
-			}
-			set {
-				if (port <= 0)
-					throw new ArgumentException ("port", "port must be greater than zero.");
-				port = value;	
-			}
-		}
-		
-		public int? SecurePort {
-			get { 
-				return securePort;
-			}
-			set {
-				if (securePort <= 0)
-					throw new ArgumentException ("port", "port must be greater than zero.");
-				securePort = value;
-			}
-		}
-		public int? SpdyPort {
-			get {
+    public class ServerCommand
+    {
+        private ManosApp app;
 
-				return spdyport;
-			}
-			set {
-				if (value <= 0)
-					throw new ArgumentException ("spdyport", "port must be greater than zero.");
-				if (value == port)
-					throw new ArgumentException("spdyport", "Spdy port cannot be the same as http port");
-				spdyport = value;
-			}
-		}
+        private int? port;
+        private int? securePort;
+        private int? spdyport;
+        private int? securespdyport;
+        private string application_assembly;
 
-		public int? SecureSpdyPort {
-			get {
-				return securespdyport;
-			}
-			set {
-				if (value <= 0)
-					throw new ArgumentException ("port", "port must be greater than zero.");
-				securespdyport = value;
-			}
-		}
+        public ServerCommand(Environment env)
+            : this(env, new List<string>())
+        {
+        }
 
-		public string User {
-			get;
-			set;
-		}
+        public ServerCommand(Environment env, IList<string> args)
+        {
+            Environment = env;
+            Arguments = args;
+        }
 
-		public string IPAddress {
-			get;
-			set;
-		}
+        public Environment Environment
+        {
+            get;
+            private set;
+        }
 
-		public string CertificateFile {
-			get;
-			set;
-		}
+        public IList<string> Arguments
+        {
+            get;
+            set;
+        }
 
-		public string KeyFile {
-			get;
-			set;
-		}
+        public string ApplicationAssembly
+        {
+            get
+            {
+                if (application_assembly == null)
+                    return Path.GetFileName(Directory.GetCurrentDirectory()) + ".dll";
+                return application_assembly;
+            }
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException("value");
+                application_assembly = value;
+            }
+        }
 
-		public string Browse {
-			get;
-			set;
-		}
+        public int Port
+        {
+            get
+            {
+                if (port == null)
+                    return 8080;
+                return (int)port;
+            }
+            set
+            {
+                if (port <= 0)
+                    throw new ArgumentException("port", "port must be greater than zero.");
+                port = value;
+            }
+        }
 
-		public string DocumentRoot {
-			get;
-			set;
-		}
-		
-		public void Run ()
-		{
-			// Setup the document root
-			if (DocumentRoot != null)
-			{
-				System.IO.Directory.SetCurrentDirectory(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DocumentRoot));
-			}
+        public int? SecurePort
+        {
+            get
+            {
+                return securePort;
+            }
+            set
+            {
+                if (securePort <= 0)
+                    throw new ArgumentException("port", "port must be greater than zero.");
+                securePort = value;
+            }
+        }
+        public int? SpdyPort
+        {
+            get
+            {
 
-			// Load the config.
-			ManosConfig.Load ();
-			
-			app = Loader.LoadLibrary<ManosApp> (ApplicationAssembly, Arguments);
-	
-			Console.WriteLine ("Running {0} on port {1}.", app, Port);
+                return spdyport;
+            }
+            set
+            {
+                if (value <= 0)
+                    throw new ArgumentException("spdyport", "port must be greater than zero.");
+                if (value == port)
+                    throw new ArgumentException("spdyport", "Spdy port cannot be the same as http port");
+                spdyport = value;
+            }
+        }
 
-			if (User != null)
-				SetServerUser (User);
-			
-			var listenAddress = Manos.IO.IPAddress.Any;
-			
-			if (IPAddress != null)
-				listenAddress = Manos.IO.IPAddress.Parse (IPAddress);
+        public int? SecureSpdyPort
+        {
+            get
+            {
+                return securespdyport;
+            }
+            set
+            {
+                if (value <= 0)
+                    throw new ArgumentException("port", "port must be greater than zero.");
+                securespdyport = value;
+            }
+        }
 
-			app.StartInternal();
+        public string User
+        {
+            get;
+            set;
+        }
 
-			AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
+        public string IPAddress
+        {
+            get;
+            set;
+        }
 
-			//AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
-			if (SecurePort != null) {
-				AppHost.InitializeTLS ("NORMAL");
-				AppHost.SecureListenAt (new Manos.IO.IPEndPoint (listenAddress, SecurePort.Value), CertificateFile, KeyFile);
-				Console.WriteLine ("Running {0} on secure port {1}.", app, SecurePort);
-			}
-			if (SpdyPort != null) {
-				AppHost.SpdyListenAt (new System.Net.IPEndPoint (listenAddress, SpdyPort.Value));
-				Console.WriteLine ("Running {0} with SPDY on port {1}.", app, SpdyPort);
-			}
-			if (SecureSpdyPort != null) {
-				if (SecurePort == null)
-					AppHost.InitializeTLS ("NORMAL");
-				AppHost.SecureSpdyListenAt (new System.Net.IPEndPoint (listenAddress, SecureSpdyPort.Value), CertificateFile, KeyFile);
-				Console.WriteLine ("Running {0} with SPDY on secure port {1}.", app, SecureSpdyPort);
-			}
+        public string CertificateFile
+        {
+            get;
+            set;
+        }
 
-			if (Browse != null)
-			{
-				var hostname = IPAddress == null ? "http://localhost" : "http://" + IPAddress;
-				if (Port != 80)
-					hostname += ":" + Port.ToString();
+        public string KeyFile
+        {
+            get;
+            set;
+        }
 
-				if (Browse == "")
-				{
-					Browse = hostname;
-				}
-				if (Browse.StartsWith("/"))
-				{
-					Browse = hostname + Browse;
-				}
+        public string Browse
+        {
+            get;
+            set;
+        }
 
-				if (!Browse.StartsWith("http://") && !Browse.StartsWith("https://"))
-					Browse = "http://" + Browse;
+        public string DocumentRoot
+        {
+            get;
+            set;
+        }
 
-				AppHost.AddTimeout(TimeSpan.FromMilliseconds(10), RepeatBehavior.Single, Browse, DoBrowse);
-			}
+        public void Run()
+        {
+            // Setup the document root
+            if (DocumentRoot != null)
+            {
+                System.IO.Directory.SetCurrentDirectory(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DocumentRoot));
+            }
 
-			AppHost.Start (app);
-		}
+            // Load the config.
+            ManosConfig.Load();
 
-		private static void DoBrowse(ManosApp app, object user_data)
-		{
-			string BrowseTo = user_data as string;
-			Console.WriteLine("Launching {0}", BrowseTo);
-			System.Diagnostics.Process.Start(BrowseTo);
-		}
+            app = Loader.LoadLibrary<ManosApp>(ApplicationAssembly, Arguments);
 
-		public void SetServerUser (string user)
-		{
-			if (user == null)
-				throw new ArgumentNullException ("user");
+            Console.WriteLine("Running {0} on port {1}.", app, Port);
 
-			PlatformID pid = System.Environment.OSVersion.Platform;
-			if (pid != PlatformID.Unix /* && pid != PlatformID.MacOSX */) {
-				// TODO: Not sure if this works on OSX yet.
+            if (User != null)
+                SetServerUser(User);
 
-				//
-				// Throw an exception here, we don't want to silently fail
-				// otherwise people might be unknowingly running as root
-				//
+            var listenAddress = Manos.IO.IPAddress.Any;
 
-				throw new InvalidOperationException ("User can not be set on Windows platforms.");
-			}
+            if (IPAddress != null)
+                listenAddress = Manos.IO.IPAddress.Parse(IPAddress);
 
-			AppHost.AddTimeout (TimeSpan.Zero, RepeatBehavior.Single, user, DoSetUser);
-		}
+            app.StartInternal();
+
+            AppHost.ListenAt(new Manos.IO.IPEndPoint(listenAddress, Port));
+
+            //AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
+            if (SecurePort != null)
+            {
+                AppHost.InitializeTLS("NORMAL");
+                AppHost.SecureListenAt(new Manos.IO.IPEndPoint(listenAddress, SecurePort.Value), CertificateFile, KeyFile);
+                Console.WriteLine("Running {0} on secure port {1}.", app, SecurePort);
+            }
+            if (SpdyPort != null)
+            {
+                AppHost.SpdyListenAt(new Manos.IO.IPEndPoint(listenAddress, SpdyPort.Value));
+                Console.WriteLine("Running {0} with SPDY on port {1}.", app, SpdyPort);
+            }
+            if (SecureSpdyPort != null)
+            {
+                if (SecurePort == null)
+                    AppHost.InitializeTLS("NORMAL");
+                AppHost.SecureSpdyListenAt(new Manos.IO.IPEndPoint(listenAddress, SecureSpdyPort.Value), CertificateFile, KeyFile);
+                Console.WriteLine("Running {0} with SPDY on secure port {1}.", app, SecureSpdyPort);
+            }
+
+            if (Browse != null)
+            {
+                var hostname = IPAddress == null ? "http://localhost" : "http://" + IPAddress;
+                if (Port != 80)
+                    hostname += ":" + Port.ToString();
+
+                if (Browse == "")
+                {
+                    Browse = hostname;
+                }
+                if (Browse.StartsWith("/"))
+                {
+                    Browse = hostname + Browse;
+                }
+
+                if (!Browse.StartsWith("http://") && !Browse.StartsWith("https://"))
+                    Browse = "http://" + Browse;
+
+                AppHost.AddTimeout(TimeSpan.FromMilliseconds(10), RepeatBehavior.Single, Browse, DoBrowse);
+            }
+
+            AppHost.Start(app);
+        }
+
+        private static void DoBrowse(ManosApp app, object user_data)
+        {
+            string BrowseTo = user_data as string;
+            Console.WriteLine("Launching {0}", BrowseTo);
+            System.Diagnostics.Process.Start(BrowseTo);
+        }
+
+        public void SetServerUser(string user)
+        {
+            if (user == null)
+                throw new ArgumentNullException("user");
+
+            PlatformID pid = System.Environment.OSVersion.Platform;
+            if (pid != PlatformID.Unix /* && pid != PlatformID.MacOSX */)
+            {
+                // TODO: Not sure if this works on OSX yet.
+
+                //
+                // Throw an exception here, we don't want to silently fail
+                // otherwise people might be unknowingly running as root
+                //
+
+                throw new InvalidOperationException("User can not be set on Windows platforms.");
+            }
+
+            AppHost.AddTimeout(TimeSpan.Zero, RepeatBehavior.Single, user, DoSetUser);
+        }
 
 
-		private void DoSetUser (ManosApp app, object user_data)
-		{
+        private void DoSetUser(ManosApp app, object user_data)
+        {
 #if DISABLE_POSIX
 			throw new InvalidOperationException ("Attempt to set user on a non-posix build.");
 #else
-			string user = user_data as string;
+            string user = user_data as string;
 
-			Console.WriteLine ("setting user to: '{0}'", user);
-			
-			if (user == null) {
-				AppHost.Stop ();
-				throw new InvalidOperationException (String.Format ("Attempting to set user to null."));
-			}
-			
-			Passwd pwd = Syscall.getpwnam (user);
-			if (pwd == null) {
-				AppHost.Stop ();
-				throw new InvalidOperationException (String.Format ("Unable to find user '{0}'.", user));
-			}
+            Console.WriteLine("setting user to: '{0}'", user);
 
-			int error = Syscall.seteuid (pwd.pw_uid);
-			if (error != 0) {
-				AppHost.Stop ();
-				throw new InvalidOperationException (String.Format ("Unable to switch to user '{0}' error: '{1}'.", user, error));
-			}
-			
+            if (user == null)
+            {
+                AppHost.Stop();
+                throw new InvalidOperationException(String.Format("Attempting to set user to null."));
+            }
+
+            Passwd pwd = Syscall.getpwnam(user);
+            if (pwd == null)
+            {
+                AppHost.Stop();
+                throw new InvalidOperationException(String.Format("Unable to find user '{0}'.", user));
+            }
+
+            int error = Syscall.seteuid(pwd.pw_uid);
+            if (error != 0)
+            {
+                AppHost.Stop();
+                throw new InvalidOperationException(String.Format("Unable to switch to user '{0}' error: '{1}'.", user, error));
+            }
+
 #endif
-		}
+        }
 
-	}
+    }
 }

@@ -15,50 +15,52 @@ using Manos.Http;
 
 namespace Manos.Spdy
 {
-  public delegate void SpdyConnectionCallback (IHttpTransaction transaction);
+    public delegate void SpdyConnectionCallback(IHttpTransaction transaction);
 
-  public class SpdyServer : IDisposable
-  {
-    public static readonly string ServerVersion;
-    private SpdyConnectionCallback callback;
-    ITcpSocket socket;
-    private bool closeOnEnd;
-
-    static SpdyServer ()
+    public class SpdyServer : IDisposable
     {
-      Version v = Assembly.GetExecutingAssembly ().GetName ().Version;
-      ServerVersion = "Manos/SPDY/" + v.ToString ();
-    }
+        public static readonly string ServerVersion;
+        private SpdyConnectionCallback callback;
+        ITcpServerSocket socket;
+        private bool closeOnEnd;
 
-    public SpdyServer(Context context, SpdyConnectionCallback callback, ITcpSocket socket, bool closeOnEnd = false)
-    {
-      this.callback = callback;
-      this.socket = socket;
-      this.closeOnEnd = closeOnEnd;
-      this.Context = context;
-    }
+        static SpdyServer()
+        {
+            Version v = Assembly.GetExecutingAssembly().GetName().Version;
+            ServerVersion = "Manos/SPDY/" + v.ToString();
+        }
 
-    public Context Context {
-      get;
-      private set;
-    }
+        public SpdyServer(Context context, SpdyConnectionCallback callback, ITcpServerSocket socket, bool closeOnEnd = false)
+        {
+            this.callback = callback;
+            this.socket = socket;
+            this.closeOnEnd = closeOnEnd;
+            this.Context = context;
+        }
 
-    public void Listen (string host, int port)
-    {
-      socket.Listen (host, port, ConnectionAccepted);
-    }
+        public Context Context
+        {
+            get;
+            private set;
+        }
 
-    public void Dispose ()
-    {
-      if (socket != null) {
-        socket.Dispose ();
-        socket = null;
-      }
-    }
+        public void Listen(string host, int port)
+        {
+            socket.Listen(port, ConnectionAccepted);
+        }
 
-    private void ConnectionAccepted(ITcpSocket socket)
-    {
-      var t = new SpdySession (Context, socket, callback);
+        public void Dispose()
+        {
+            if (socket != null)
+            {
+                socket.Dispose();
+                socket = null;
+            }
+        }
+
+        private void ConnectionAccepted(ITcpSocket socket)
+        {
+            var t = new SpdySession(Context, socket, callback);
+        }
     }
-  }
 }
