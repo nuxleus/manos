@@ -53,6 +53,20 @@ namespace Manos.Routing
 	
 		public bool IsMatch (string input, int start, out DataDictionary data, out int end)
 		{
+			/*if (!StartsWith (input, start, String)) {
+				
+				// some special processing - ugh
+				// route to '/' when the parent app has Route("/test", new SubModule)
+				// and sub module has [Get("/")]
+				if ("/" == String && (input.Length + 1 == str.Length + start)) {
+					data = null;
+					end = input.Length; // force acceptance
+					return true;					
+				} else {				
+					data = null;
+					end = start;
+					return false;
+				}*/
 			return IsMatchInternal (String, input, start, out data, out end);
 		}
 
@@ -76,6 +90,5 @@ namespace Manos.Routing
 				
 			return String.Compare (input, start, str, 0, str.Length, StringComparison.OrdinalIgnoreCase) == 0;
 		}
-		
-	}
+  }
 }
