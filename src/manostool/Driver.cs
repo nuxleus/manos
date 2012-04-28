@@ -137,6 +137,7 @@ namespace Manos.Tool
 			if (args.Count < 1) {
 				Console.WriteLine (string.Format ("{0} --init <AppName>", MANOS_TOOLNAME));
 				Console.WriteLine ("This will initialize a new application with the supplied name.");
+				return 1;
 			}
 				
 			Driver d = new Driver ();
