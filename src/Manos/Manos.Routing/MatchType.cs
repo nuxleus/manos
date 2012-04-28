@@ -27,11 +27,12 @@ using System;
 
 namespace Manos.Routing
 {
-        public enum MatchType
-        {
-		Simple,
-		String,
-		Regex
-	}
+    public enum MatchType
+    {
+        Simple,
+        String,
+        Regex,
+        Nop
+    }
 }
 

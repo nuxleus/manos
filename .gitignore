@@ -33,7 +33,7 @@ configure
 *.pc
 missing
 .*.swp
-*.suo
 packages
 !packages/repositories.config
+*.suo
 
