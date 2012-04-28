@@ -35,194 +35,226 @@ using System.Collections.Specialized;
 using Manos.Http;
 using Manos.Collections;
 
-namespace Manos.Routing {
+namespace Manos.Routing
+{
 
-	public class RouteHandler : IEnumerable<RouteHandler> {
+    public class RouteHandler : IEnumerable<RouteHandler>
+    {
 
-		private List<HttpMethod> methods;
+        private List<HttpMethod> methods;
 
-		private IMatchOperation [] match_ops;
+        private IMatchOperation[] match_ops;
 
-		public RouteHandler ()
-		{
-			SetupChildrenCollection ();
-		}
+        public RouteHandler()
+        {
+            SetupChildrenCollection();
+        }
 
-		void HandleChildrenCollectionChanged (object sender, EventArgs e)
-		{
-			if (Target != null)
-				throw new InvalidOperationException ("Can not add Children to a RouteHandler that has a Target set.");	
-		}
+        void HandleChildrenCollectionChanged(object sender, EventArgs e)
+        {
+            if (Target != null)
+                throw new InvalidOperationException("Can not add Children to a RouteHandler that has a Target set.");
+        }
 
-		public RouteHandler (IMatchOperation op, HttpMethod [] methods) : this (new IMatchOperation [] { op }, methods)
-		{
-		}
-		
-		public RouteHandler (IMatchOperation op, HttpMethod [] methods, IManosTarget target) : this (new IMatchOperation [] { op }, methods, target)
-		{
-		}
-		
-		public RouteHandler (IMatchOperation op, HttpMethod method) : this (new IMatchOperation [] { op }, new HttpMethod [] { method })
-		{
-		}
-		
-		public RouteHandler (IMatchOperation op, HttpMethod method, IManosTarget target) : this (new IMatchOperation [] { op }, new HttpMethod [] { method }, target)
-		{
-		}
-		
-		public RouteHandler (IMatchOperation [] ops, HttpMethod [] methods) : this (ops, methods, null)
-		{
-		}
+        public RouteHandler(IMatchOperation op, HttpMethod[] methods)
 
-		public RouteHandler (IMatchOperation [] ops, HttpMethod [] methods, IManosTarget target)
-		{
-			Target = target;
+            : this(new IMatchOperation[] { op }, methods)
+        {
+        }
 
-			match_ops = ops;
-			this.methods = new List<HttpMethod> (methods);
+        public RouteHandler(IMatchOperation op, HttpMethod[] methods, IManosTarget target)
+            : this(new IMatchOperation[] { op }, methods, target)
+        {
+        }
 
-			SetupChildrenCollection ();
-		}
-			
-		private void SetupChildrenCollection ()
-		{
-			var children = new C5.ArrayList<RouteHandler> ();
-			
-			children.ItemInserted += HandleChildrenCollectionChanged;
-			children.ItemsAdded += HandleChildrenCollectionChanged;
-			children.ItemRemovedAt += HandleChildrenCollectionChanged;
-			children.ItemsRemoved += HandleChildrenCollectionChanged;
-			Children = children;
-		}
+        public RouteHandler(IMatchOperation op, HttpMethod method)
+            : this(new IMatchOperation[] { op }, new HttpMethod[] { method })
+        {
+        }
 
-		public bool IsImplicit {
-			get;
-			internal set;
-		}
+        public RouteHandler(IMatchOperation op, HttpMethod method, IManosTarget target)
+            : this(new IMatchOperation[] { op }, new HttpMethod[] { method }, target)
+        {
+        }
 
-		public IMatchOperation [] MatchOps {
-			get { return match_ops; }
-			set { match_ops = value; }
-		}
+        public RouteHandler(IMatchOperation[] ops, HttpMethod[] methods)
+            : this(ops, methods, null)
+        {
+        }
 
-		public IList<HttpMethod> Methods {
-			get { return methods; }
-			set {
-				if (value == null)
-					methods = null;
-				else
-					methods = new List<HttpMethod> (value); 
-			}
-		}
+        public RouteHandler(IMatchOperation[] ops, HttpMethod[] methods, IManosTarget target)
+        {
+            Target = target;
 
-		public IManosTarget Target {
-			get;
-			set;
-		}
+            match_ops = ops;
+            this.methods = new List<HttpMethod>(methods);
 
-		//
-		// TODO: These also need to be an observable collection
-		// so we can throw an exception if someone tries to add 
-		// a child when we already have a Target
-		//
-		public IList<RouteHandler> Children {
-			get;
-			private set;
-		}
+            SetupChildrenCollection();
+        }
 
-		public bool HasPatterns {
-			get { 
-				return match_ops != null && match_ops.Length > 0;
-			}
-		}
-		
-		IEnumerator IEnumerable.GetEnumerator ()
-		{
-			return GetEnumerator ();
-		}
+        private void SetupChildrenCollection()
+        {
+            var children = new C5.ArrayList<RouteHandler>();
 
-		public IEnumerator<RouteHandler> GetEnumerator ()  
-		{  
-			yield return this;  
-			foreach (RouteHandler child in Children) {  
-				foreach (RouteHandler subchild in child) {  
-					yield return subchild;  
-				}
-			}
-		}
+            children.ItemInserted += HandleChildrenCollectionChanged;
+            children.ItemsAdded += HandleChildrenCollectionChanged;
+            children.ItemRemovedAt += HandleChildrenCollectionChanged;
+            children.ItemsRemoved += HandleChildrenCollectionChanged;
+            Children = children;
+        }
 
-		public void Add (RouteHandler child)
-		{
-			Children.Add (child);	
-		}
-		
-		public IManosTarget Find (IHttpRequest request)
-		{
-			return Find (request, 0);
-		}
-		
-		private IManosTarget Find (IHttpRequest request, int uri_start)
-		{
-			if (!IsMethodMatch (request))
-				return null;
-						
-			DataDictionary uri_data = null;
-			if (HasPatterns) {
-				int end;
-				
-				if (!FindPatternMatch (request.Path, uri_start, out uri_data, out end)) {
-					return null;
-				}
+        public bool IsImplicit
+        {
+            get;
+            internal set;
+        }
 
-				if (Target != null) {
-					if (uri_data != null)
-						request.UriData.Children.Add (uri_data);
-					return Target;
-				}
+        public IMatchOperation[] MatchOps
+        {
+            get { return match_ops; }
+            set { match_ops = value; }
+        }
 
-				uri_start = end;
-			}
+        public IList<HttpMethod> Methods
+        {
+            get { return methods; }
+            set
+            {
+                if (value == null)
+                    methods = null;
+                else
+                    methods = new List<HttpMethod>(value);
+            }
+        }
 
-			foreach (RouteHandler handler in Children) {
-				IManosTarget res = handler.Find (request, uri_start);
-				if (res != null) {
-					if (uri_data != null)
-						request.UriData.Children.Add (uri_data);
-					return res;
-				}
-			}
+        public IManosTarget Target
+        {
+            get;
+            set;
+        }
 
-			return null;
-		}
+        //
+        // TODO: These also need to be an observable collection
+        // so we can throw an exception if someone tries to add 
+        // a child when we already have a Target
+        //
+        public IList<RouteHandler> Children
+        {
+            get;
+            private set;
+        }
 
-		public bool FindPatternMatch (string input, int start, out DataDictionary uri_data, out int end)
-		{
-			if (match_ops == null) {
-				uri_data = null;
-				end = start;
-				return false;
-			}
-			
-			foreach (IMatchOperation op in match_ops) {
-				if (op.IsMatch (input, start, out uri_data, out end)) {
-					if (Children.Count () > 0 || end == input.Length) {
-						return true;
-					}
-				}
-			}
+        public bool HasPatterns
+        {
+            get
+            {
+                return match_ops != null && match_ops.Length > 0;
+            }
+        }
 
-			uri_data = null;
-			end = start;
-			return false;
-		}
-		
-		public bool IsMethodMatch (IHttpRequest request)
-		{
-			if (methods != null)
-				return methods.Contains (request.Method);
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
 
-			return true;
-		}
-	}
+        public IEnumerator<RouteHandler> GetEnumerator()
+        {
+            yield return this;
+            foreach (RouteHandler child in Children)
+            {
+                foreach (RouteHandler subchild in child)
+                {
+                    yield return subchild;
+                }
+            }
+        }
+
+        public void Add(RouteHandler child)
+        {
+            Children.Add(child);
+        }
+
+        public void Clear()
+        {
+            Children.Clear();
+        }
+
+        public IManosTarget Find(IHttpRequest request)
+        {
+            return Find(request, 0);
+        }
+
+        private IManosTarget Find(IHttpRequest request, int uri_start)
+        {
+            if (!IsMethodMatch(request))
+                return null;
+
+            DataDictionary uri_data = null;
+            if (HasPatterns)
+            {
+                int end;
+
+                if (!FindPatternMatch(request.Path, uri_start, out uri_data, out end))
+                {
+                    return null;
+                }
+
+                if (Target != null)
+                {
+                    if (uri_data != null)
+                        request.UriData.Children.Add(uri_data);
+                    return Target;
+                }
+
+                uri_start = end;
+            }
+
+            foreach (RouteHandler handler in Children)
+            {
+                IManosTarget res = handler.Find(request, uri_start);
+                if (res != null)
+                {
+                    if (uri_data != null)
+                        request.UriData.Children.Add(uri_data);
+                    return res;
+                }
+            }
+
+            return null;
+        }
+
+        public bool FindPatternMatch(string input, int start, out DataDictionary uri_data, out int end)
+        {
+            if (match_ops == null)
+            {
+                uri_data = null;
+                end = start;
+                return false;
+            }
+
+            foreach (IMatchOperation op in match_ops)
+            {
+                if (op.IsMatch(input, start, out uri_data, out end))
+                {
+                    if (Children.Count() > 0 || end == input.Length)
+                    {
+                        return true;
+                    }
+                }
+            }
+
+            uri_data = null;
+            end = start;
+            return false;
+        }
+
+        public bool IsMethodMatch(IHttpRequest request)
+        {
+            if (methods != null)
+                return methods.Contains(request.Method);
+
+            return true;
+        }
+    }
 }
 
