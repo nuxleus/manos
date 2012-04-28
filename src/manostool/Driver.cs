@@ -39,6 +39,7 @@ namespace Manos.Tool
 		public static readonly string COMPILED_TEMPLATES_ASSEMBLY = "CompiledTemplates.dll";
 		public static readonly string TEMPLATES_DIRECTORY = "Templates";
 		public static readonly string DEPLOYMENT_DIRECTORY = "Deployment";
+		public static readonly string MANOS_TOOLNAME = "manostool";
 		
 		private static Environment Environment = new Environment ();
 
@@ -65,7 +66,7 @@ namespace Manos.Tool
 			try {
 				extra = p.Parse(args);
 			} catch (OptionException){
-				Console.WriteLine ("Try `manos --help' for more information.");
+				Console.WriteLine (string.Format ("Try `{0} --help' for more information.", MANOS_TOOLNAME));
 				return 1;
 			}
 			
@@ -115,7 +116,7 @@ namespace Manos.Tool
 			try {
 				extra = p.Parse(args);
 			} catch (OptionException){
-				Console.WriteLine ("Try `manos --help' for more information.");
+				Console.WriteLine (string.Format ("Try `{0} --help' for more information.", MANOS_TOOLNAME));
 				return null;
 			}
 			
@@ -133,7 +134,17 @@ namespace Manos.Tool
 			};
 			
 			
+			if (args.Count < 1) {
+				Console.WriteLine (string.Format ("{0} --init <AppName>", MANOS_TOOLNAME));
+				Console.WriteLine ("This will initialize a new application with the supplied name.");
+			}
+				
 			Driver d = new Driver ();
+
+			if (args.Count <= 0) {
+				Console.WriteLine ("Error: Unable to init without an AppName.");
+				return 1;
+			}
 			
 			try {
 
@@ -164,6 +175,13 @@ namespace Manos.Tool
 			}
 			
 			return 0;
+		}
+		
+		public void Init (string name)
+		{
+			InitCommand initer = new InitCommand (Environment, name);
+			
+			initer.Run ();
 		}
 
 		private static int Server (IList<string> args)
@@ -299,18 +317,24 @@ namespace Manos.Tool
 
 		private static int ShowEnvironment (IList<string> args)
 		{
-			Console.WriteLine ("libdir: '{0}'", Environment.LibDirectory);
-			Console.WriteLine ("manosdir: '{0}'", Environment.ManosDirectory);
-			Console.WriteLine ("workingdir: '{0}'", Environment.WorkingDirectory);
-			Console.WriteLine ("datadir: '{0}'", Environment.DataDirectory);
-			Console.WriteLine ("datadir: '{0}'", Environment.DocsDirectory);
+			if (Environment.IsWindows) {
+				Console.WriteLine ("manosdir: '{0}'", Environment.ManosDirectory);
+				Console.WriteLine ("datadir: '{0}'", Environment.DataDirectory);
+				Console.WriteLine ("docsdir: '{0}'", Environment.DocsDirectory);
+			} else {
+				Console.WriteLine ("libdir: '{0}'", Environment.LibDirectory);
+				Console.WriteLine ("manosdir: '{0}'", Environment.ManosDirectory);
+				Console.WriteLine ("workingdir: '{0}'", Environment.WorkingDirectory);
+				Console.WriteLine ("datadir: '{0}'", Environment.DataDirectory);
+				Console.WriteLine ("docsdir: '{0}'", Environment.DocsDirectory);
+			}
 
 			return 1;
 		}
 
 		private static void ShowHelp (OptionSet os)
 		{
-			Console.WriteLine ("manos usage is: manos [command] [options]");
+			Console.WriteLine (string.Format ("{0} usage is: {0} [command] [options]", MANOS_TOOLNAME));
 			Console.WriteLine ();
 			os.WriteOptionDescriptions (Console.Out);
 		}
