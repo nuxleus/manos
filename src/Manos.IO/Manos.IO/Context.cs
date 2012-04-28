@@ -34,15 +34,18 @@ namespace Manos.IO
 
 		private static readonly bool useManagedImpl;
 
+		private static readonly bool isWindows;
+
 		static Context ()
 		{
-#if ALWAYS_USE_MANAGED_IO
-			useManagedImpl = true;
-#else
-			useManagedImpl = Environment.OSVersion.Platform == PlatformID.Win32NT
+			isWindows = Environment.OSVersion.Platform == PlatformID.Win32NT
 				|| Environment.OSVersion.Platform == PlatformID.Win32S
 				|| Environment.OSVersion.Platform == PlatformID.Win32Windows
 				|| Environment.OSVersion.Platform == PlatformID.WinCE;
+#if ALWAYS_USE_MANAGED_IO
+			useManagedImpl = true;
+#else
+			useManagedImpl = isWindows;
 #endif
 		}
 		
@@ -52,10 +55,35 @@ namespace Manos.IO
 		/// </summary>
 		public static Context Create ()
 		{
-			if (useManagedImpl) {
-				return new Manos.IO.Managed.Context ();
-			} else {
+			return Create (Backend.Support);
+		}
+
+		/// <summary>
+		/// Create the specified backend.
+		/// </summary>
+		/// <param name='backend'>
+		/// Backend.
+		/// </param>
+		/// <exception cref='NotSupportedException'>
+		/// Is thrown when an object cannot perform an operation.
+		/// </exception>
+		public static Context Create (Backend backend)
+		{
+			switch (backend) {
+			case Backend.Libev:
 				return new Manos.IO.Libev.Context ();
+			case Backend.Managed:
+				return new Manos.IO.Managed.Context ();
+			case Backend.Poll:
+				return new Manos.IO.Poll.Context ();
+			case Backend.Support:
+				if (isWindows) {
+					return Create (Backend.Managed);
+				} else {
+					return Create (useManagedImpl ? Backend.Managed : Backend.Libev);
+				}
+			default:
+				throw new NotSupportedException("backend not supported");
 			}
 		}
 		

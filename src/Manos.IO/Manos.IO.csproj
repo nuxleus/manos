@@ -47,6 +47,7 @@
     <Folder Include="Manos.IO\" />
     <Folder Include="Manos.IO.Libev\" />
     <Folder Include="Manos.IO.Managed\" />
+    <Folder Include="Manos.IO.Poll\" />
   </ItemGroup>
   <ItemGroup>
     <Compile Include="Assembly\AssemblyInfo.cs" />
@@ -116,6 +117,17 @@
     <Compile Include="Manos.IO\Errors.cs" />
     <Compile Include="Manos.IO\IOException.cs" />
     <Compile Include="Manos.IO\OpenMode.cs" />
+    <Compile Include="Manos.IO.Poll\Context.cs" />
+    <Compile Include="Manos.IO.Poll\AsyncWatcher.cs" />
+    <Compile Include="Manos.IO.Poll\CheckWatcher.cs" />
+    <Compile Include="Manos.IO.Poll\IOWatcher.cs" />
+    <Compile Include="Manos.IO.Poll\IdleWatcher.cs" />
+    <Compile Include="Manos.IO.Poll\Pipe.cs" />
+    <Compile Include="Manos.IO.Poll\TimerWatcher.cs" />
+    <Compile Include="Manos.IO.Poll\Loop.cs" />
+    <Compile Include="Manos.IO.Poll\Watcher.cs" />
+    <Compile Include="Manos.IO.Poll\PrepareWatcher.cs" />
+    <Compile Include="Manos.IO\Backend.cs" />
     <Compile Include="Manos.IO\INotifier.cs" />
     <Compile Include="Libev\Pipe.cs" />
     <Compile Include="Manos.IO.Libev\Notifier.cs" />
