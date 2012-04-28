@@ -36,16 +36,16 @@
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
+    <Reference Include="Mono.C5">
+      <HintPath>C:\Program Files\Mono-2.11\lib\mono\4.5\Mono.C5.dll</HintPath>
+    </Reference>
+    <Reference Include="Mono.CSharp">
+      <HintPath>C:\Program Files\Mono-2.11\lib\mono\4.5\Mono.CSharp.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Mono.Posix">
       <HintPath>..\..\libs\Mono.Posix.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.CSharp">
-      <HintPath>..\..\libs\Mono.CSharp.dll</HintPath>
-    </Reference>
-    <Reference Include="Mono.C5">
-      <HintPath>..\..\libs\Mono.C5.dll</HintPath>
     </Reference>
     <Reference Include="Nini, Version=1.1.0.0, Culture=neutral, PublicKeyToken=c9892194e1b9ec1b">
       <SpecificVersion>False</SpecificVersion>
