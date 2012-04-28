@@ -156,6 +156,10 @@ namespace Manos.Tool
 			if (IPAddress != null)
 				listenAddress = Manos.IO.IPAddress.Parse (IPAddress);
 
+			app.StartInternal();
+
+			AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
+
 			AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
 			if (SecurePort != null) {
 				AppHost.InitializeTLS ("NORMAL");
