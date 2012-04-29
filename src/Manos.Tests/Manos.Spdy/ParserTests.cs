@@ -418,6 +418,7 @@ namespace Manos.Spdy.Tests
                 done(() => parser.OnSynReply -= handle);
             });
         }
+       
         public void AsyncTest(Action<Action<Action>> cb)
         {
             ManualResetEvent wait = new ManualResetEvent(false);

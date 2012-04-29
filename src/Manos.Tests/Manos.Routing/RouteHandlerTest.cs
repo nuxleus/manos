@@ -103,10 +103,13 @@ namespace Manos.Routing.Tests
 
             Assert.AreEqual("Route1", txn.ResponseString);
 
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/TESTING/Route1/");
-            txn = new MockHttpTransaction(req, res);
-            t.HandleTransaction(t, txn);
-            Assert.AreEqual("Route1", txn.ResponseString);
+            var t2 = new TestApp();
+            var req2 = new MockHttpRequest(HttpMethod.HTTP_GET, "/TESTING/Route1/");
+            var res2 = new MockHttpResponse();
+            var txn2 = new MockHttpTransaction(req2, res2);
+            t2.HandleTransaction(t2, txn2);
+
+            Assert.AreEqual("Route1", txn2.ResponseString);
         }
 
         [Test]
@@ -114,18 +117,19 @@ namespace Manos.Routing.Tests
         {
             var t = new TestApp();
             var req = new MockHttpRequest(HttpMethod.HTTP_GET, "/TESTING/Route2a/29/Andrew");
-     
             var res = new MockHttpResponse();
             var txn = new MockHttpTransaction(req, res);
             t.HandleTransaction(t, txn);
 
             Assert.AreEqual("(R2a) Hello 'Andrew', you are '29'", txn.ResponseString);
 
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/TESTING/Route2b/Andrew/29");
-            txn = new MockHttpTransaction(req, res);
-            t.HandleTransaction(t, txn);
+            var t2 = new TestApp();
+            var req2 = new MockHttpRequest(HttpMethod.HTTP_GET, "/TESTING/Route2b/Andrew/29");
+            var res2 = new MockHttpResponse();
+            var txn2 = new MockHttpTransaction(req2, res2);
+            t2.HandleTransaction(t2, txn2);
 
-            Assert.AreEqual("(R2b) Hello 'Andrew', you are '29'", txn.ResponseString);
+            Assert.AreEqual("(R2b) Hello 'Andrew', you are '29'", txn2.ResponseString);
 
         }
 
@@ -140,11 +144,13 @@ namespace Manos.Routing.Tests
 
             Assert.AreEqual("'Andrew', you are '29'", txn.ResponseString);
 
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/TESTING/Route3/Andrew/29/");
-            txn = new MockHttpTransaction(req, res);
-            t.HandleTransaction(t, txn);
+            var t2 = new TestApp();
+            var req2 = new MockHttpRequest(HttpMethod.HTTP_GET, "/TESTING/Route3/Andrew/29/");
+            var res2 = new MockHttpResponse();
+            var txn2 = new MockHttpTransaction(req2, res2);
+            t2.HandleTransaction(t2, txn2);
 
-            Assert.AreEqual("'Andrew', you are '29'", txn.ResponseString);
+            Assert.AreEqual("'Andrew', you are '29'", txn2.ResponseString);
 
         }
 
@@ -225,19 +231,18 @@ namespace Manos.Routing.Tests
 
             request = new MockHttpRequest(HttpMethod.HTTP_GET, "baz");
             Assert.AreEqual(target, rh.Find(request), "changed");
-
         }
 
         [Test]
         public void HasPatternsTest()
         {
             IMatchOperation fooOp = MatchOperationFactory.Create("foo/", MatchType.String);
-            IMatchOperation foobarOp = MatchOperationFactory.Create("foo/", MatchType.String);
+            IMatchOperation foobarOp = MatchOperationFactory.Create("foobar", MatchType.String);
             var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET);
 
             Assert.IsTrue(rh.HasPatterns, "a1");
 
-            rh.Clear();
+            rh.Children.Clear();
             Assert.IsFalse(rh.HasPatterns, "a2");
 
             rh.Add(new RouteHandler(foobarOp, HttpMethod.HTTP_GET));

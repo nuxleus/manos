@@ -10,6 +10,8 @@
     <RootNamespace>Manos.Tests</RootNamespace>
     <AssemblyName>Manos.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -82,5 +84,9 @@
       <Name>Manos</Name>
     </ProjectReference>
   </ItemGroup>
+  <Target Name="ListSources">
+    <Message Text="@(Compile)" Importance="High" />
+  </Target>
   <ItemGroup />
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
 </Project>
