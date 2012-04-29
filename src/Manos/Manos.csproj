@@ -10,6 +10,8 @@
     <RootNamespace>Manos</RootNamespace>
     <AssemblyName>Manos</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -42,14 +44,18 @@
     <Reference Include="Mono.CSharp">
       <HintPath>C:\Program Files\Mono-2.11\lib\mono\4.5\Mono.CSharp.dll</HintPath>
     </Reference>
+    <Reference Include="Nini, Version=1.1.0.0, Culture=neutral, PublicKeyToken=691faec150a7fa7b, processorArchitecture=MSIL">
+      <SpecificVersion>False</SpecificVersion>
+      <HintPath>..\packages\Trove.Nini.1.1.0.0\lib\net20\Nini.dll</HintPath>
+    </Reference>
     <Reference Include="System" />
     <Reference Include="System.Core" />
     <Reference Include="Mono.Posix">
       <HintPath>..\..\libs\Mono.Posix.dll</HintPath>
     </Reference>
-    <Reference Include="Nini, Version=1.1.0.0, Culture=neutral, PublicKeyToken=c9892194e1b9ec1b">
+    <Reference Include="Ionic.Zlib, Version=1.9.1.5, Culture=neutral, PublicKeyToken=edbe51ad942a3f5c">
       <SpecificVersion>False</SpecificVersion>
-      <HintPath>..\..\libs\Nini.dll</HintPath>
+      <HintPath>..\..\libs\Ionic.Zlib.dll</HintPath>
     </Reference>
   </ItemGroup>
   <ItemGroup>
@@ -109,7 +115,6 @@
     <Compile Include="Manos.Routing\NopMatchOperation.cs" />
     <Compile Include="Manos.Routing\MatchType.cs" />
     <Compile Include="Manos\HttpMethods.cs" />
-    <Compile Include="Assembly\AssemblyInfo.cs" />
     <Compile Include="Manos\AppHost.cs" />
     <Compile Include="Manos.Caching\CacheItemCallback.cs" />
     <Compile Include="Manos.Caching\CacheOpCallback.cs" />
@@ -156,10 +161,34 @@
     <Compile Include="Manos\RepeatBehavior.cs" />
     <Compile Include="Manos\Timeout.cs" />
     <Compile Include="Manos\TimeoutCallback.cs" />
+    <Compile Include="Manos.Spdy\ControlFrame.cs" />
+    <Compile Include="Manos.Spdy\GoawayFrame.cs" />
+    <Compile Include="Manos.Spdy\NameValueHeaderBlock.cs" />
+    <Compile Include="Manos.Spdy\PingFrame.cs" />
+    <Compile Include="Manos.Spdy\RstStreamFrame.cs" />
+    <Compile Include="Manos.Spdy\SettingsFrame.cs" />
+    <Compile Include="Manos.Spdy\SPDYParser.cs" />
+    <Compile Include="Manos.Spdy\SynReplyFrame.cs" />
+    <Compile Include="Manos.Spdy\SynStreamFrame.cs" />
+    <Compile Include="Manos.Spdy\Compression.cs" />
+    <Compile Include="Manos.Spdy\HeadersFrame.cs" />
+    <Compile Include="Manos.Spdy\WindowUpdateFrame.cs" />
+    <Compile Include="Manos.Spdy\VersionFrame.cs" />
+    <Compile Include="Manos.Spdy\DataFrame.cs" />
+    <Compile Include="Manos.Spdy\Util.cs" />
+    <Compile Include="Manos.Spdy\SpdyServer.cs" />
+    <Compile Include="Manos.Spdy\SpdyTransaction.cs" />
+    <Compile Include="Manos.Spdy\SpdySession.cs" />
+    <Compile Include="Manos.Spdy\SpdyRequest.cs" />
+    <Compile Include="Manos.Spdy\SpdyResponse.cs" />
+    <Compile Include="Manos.Spdy\SpdyStream.cs" />
+    <Compile Include="Manos.Spdy\SpdyEntity.cs" />
+    <Compile Include="Manos.Http\IHttpDataRecipient.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
     <None Include="Manos.Templates.Testing\ManosTemplateStub.cs" />
+    <None Include="packages.config" />
   </ItemGroup>
   <Target Name="ListSources">
     <Message Text="@(Compile)" Importance="High" />
@@ -174,10 +203,12 @@
     </MonoDevelop>
   </ProjectExtensions>
   <ItemGroup />
+  <ItemGroup />
   <ItemGroup>
     <ProjectReference Include="..\Manos.IO\Manos.IO.csproj">
       <Project>{5E2AA984-1C9C-4890-BEF6-CC2981C49AFF}</Project>
       <Name>Manos.IO</Name>
     </ProjectReference>
   </ItemGroup>
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
 </Project>
