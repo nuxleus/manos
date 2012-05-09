@@ -1,8 +1,7 @@
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Collections.Generic;
-
 using Manos.Http;
 using Manos.IO;
 
@@ -10,60 +9,37 @@ namespace Manos.Spdy
 {
     public class SpdyResponse : SpdyEntity, IHttpResponse
     {
-        private int statuscode;
-
-        public SpdyRequest Request { get; set; }
-
-        private SpdyStream writestream;
-        private Dictionary<string, HttpCookie> cookies;
+        private readonly Dictionary<string, HttpCookie> cookies;
+        private readonly SpdyStream writestream;
         private Dictionary<string, object> properties;
 
         public SpdyResponse(SpdyRequest req, SpdyStream writestream, Context context)
             : base(context)
         {
-            this.Request = req;
-            this.Headers = new HttpHeaders();
-            this.cookies = new Dictionary<string, HttpCookie>();
+            Request = req;
+            Headers = new HttpHeaders();
+            cookies = new Dictionary<string, HttpCookie>();
             this.writestream = writestream;
         }
+
+        public SpdyRequest Request { get; set; }
+
+        #region IHttpResponse Members
+
         public HttpStream Stream
         {
-            get
-            {
-                throw new NotImplementedException("Stream");
-            }
+            get { throw new NotImplementedException("Stream"); }
         }
 
 
         public StreamWriter Writer
         {
-            get
-            {
-                throw new NotImplementedException("Writer");
-            }
+            get { throw new NotImplementedException("Writer"); }
         }
 
+        #endregion
 
         #region IHttpResponse implementation
-
-        private void EnsureReplyWritten(bool done)
-        {
-            if (writestream.ReplyWritten)
-                return;
-            writestream.WriteReply(this, done);
-        }
-
-        private void EnsureReplyWritten()
-        {
-            EnsureReplyWritten(false);
-        }
-
-
-        public override void WriteToBody(byte[] data, int offset, int length)
-        {
-            EnsureReplyWritten();
-            writestream.Write(data, offset, length);
-        }
 
         public void Complete(Action callback)
         {
@@ -89,7 +65,7 @@ namespace Manos.Spdy
 
         public void SetHeader(string name, string value)
         {
-            this.Headers.SetHeader(name, value);
+            Headers.SetHeader(name, value);
         }
 
         public void SetCookie(string name, HttpCookie cookie)
@@ -173,21 +149,29 @@ namespace Manos.Spdy
             throw new NotImplementedException("WriteMetadata");
         }
 
-        public int StatusCode
-        {
-            get
-            {
-                return statuscode;
-            }
-            set
-            {
-                this.statuscode = value;
-            }
-        }
+        public int StatusCode { get; set; }
 
         public bool WriteHeaders { get; set; }
+
+        private void EnsureReplyWritten(bool done)
+        {
+            if (writestream.ReplyWritten)
+                return;
+            writestream.WriteReply(this, done);
+        }
+
+        private void EnsureReplyWritten()
+        {
+            EnsureReplyWritten(false);
+        }
+
+
+        public override void WriteToBody(byte[] data, int offset, int length)
+        {
+            EnsureReplyWritten();
+            writestream.Write(data, offset, length);
+        }
 
         #endregion
     }
 }
-

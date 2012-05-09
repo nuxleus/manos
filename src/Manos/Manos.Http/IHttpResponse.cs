@@ -23,101 +23,77 @@
 //
 
 
-
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Collections.Generic;
 
-using Manos.IO;
+namespace Manos.Http
+{
+    public interface IHttpResponse : IDisposable
+    {
+        HttpHeaders Headers { get; }
 
-namespace Manos.Http {
+        HttpStream Stream { get; }
 
-	public interface IHttpResponse : IDisposable {
 
-		HttpHeaders Headers {
-			get;
-		}
+        StreamWriter Writer { get; }
 
-		HttpStream Stream {
-			get;
-		}
+        Encoding ContentEncoding { get; set; }
 
-		
-		StreamWriter Writer {
-			get;
-		}
+        int StatusCode { get; set; }
 
-		Encoding ContentEncoding {
-			get;
-			set;
-		}
+        bool WriteHeaders { get; set; }
 
-		int StatusCode {
-			get;
-			set;
-		}
 
-		bool WriteHeaders {
-			get;
-			set;
-		}
+        Dictionary<string, object> Properties { get; }
 
-		
-		Dictionary<string,object> Properties {
-			get;
-		}
 
-		
-		string PostBody {
-			get;
-			set;
-		}
+        string PostBody { get; set; }
 
-		void SetProperty (string name, object o);
+        void SetProperty(string name, object o);
 
-		object GetProperty (string name);
+        object GetProperty(string name);
 
-		T GetProperty<T> (string name);
-		
-		void Write (string str);
-		void Write (string str, params object [] prms);
-		
-		void WriteLine (string str);
-		void WriteLine (string str, params object [] prms);
+        T GetProperty<T>(string name);
 
-		void Write (byte [] data);
-		void Write (byte [] data, int offset, int length);
+        void Write(string str);
+        void Write(string str, params object[] prms);
 
-		void End ();
-		void End (string str);
-		void End (byte [] data);
-		void End (byte [] data, int offset, int length);
-		void End (string str, params object [] prms);
+        void WriteLine(string str);
+        void WriteLine(string str, params object[] prms);
 
-		void Complete (Action callback);
+        void Write(byte[] data);
+        void Write(byte[] data, int offset, int length);
 
-		void SendFile (string file);
-		
-		void Redirect (string url);
+        void End();
+        void End(string str);
+        void End(byte[] data);
+        void End(byte[] data, int offset, int length);
+        void End(string str, params object[] prms);
 
-		void SetHeader (string name, string value);
-				
-		void SetCookie (string name, HttpCookie cookie);
-		HttpCookie SetCookie (string name, string value);
-		HttpCookie SetCookie (string name, string value, string domain);
-		HttpCookie SetCookie (string name, string value, DateTime expires);
-		HttpCookie SetCookie (string name, string value, string domain, DateTime expires);
-		HttpCookie SetCookie (string name, string value, TimeSpan max_age);
-		HttpCookie SetCookie (string name, string value, string domain, TimeSpan max_age);
+        void Complete(Action callback);
 
-		void RemoveCookie(string name);
+        void SendFile(string file);
 
-		void Read ();
-		void WriteMetadata (StringBuilder builder);
+        void Redirect(string url);
 
-		event Action OnEnd;
-		event Action OnCompleted;
-	}
+        void SetHeader(string name, string value);
+
+        void SetCookie(string name, HttpCookie cookie);
+        HttpCookie SetCookie(string name, string value);
+        HttpCookie SetCookie(string name, string value, string domain);
+        HttpCookie SetCookie(string name, string value, DateTime expires);
+        HttpCookie SetCookie(string name, string value, string domain, DateTime expires);
+        HttpCookie SetCookie(string name, string value, TimeSpan max_age);
+        HttpCookie SetCookie(string name, string value, string domain, TimeSpan max_age);
+
+        void RemoveCookie(string name);
+
+        void Read();
+        void WriteMetadata(StringBuilder builder);
+
+        event Action OnEnd;
+        event Action OnCompleted;
+    }
 }
-

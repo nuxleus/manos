@@ -24,33 +24,76 @@
 
 
 using System;
-using NUnit.Framework;
-
-using Manos.Routing;
 using Manos.ShouldExt;
-
+using NUnit.Framework;
 
 namespace Manos.Routing.Tests
 {
-
-    [TestFixture()]
+    [TestFixture]
     public class MatchOperationFactoryTest
     {
+        [Test]
+        public void Create_EscapedCloseSimpleMatch_CreatesStringMatch()
+        {
+            IMatchOperation op = MatchOperationFactory.Create("{bar}}", MatchType.String);
 
-        [Test()]
+            Should.BeInstanceOf<StringMatchOperation>(op);
+        }
+
+        [Test]
+        public void Create_EscapedOpenSimpleMatch_CreatesStringMatch()
+        {
+            IMatchOperation op = MatchOperationFactory.Create("{{bar}", MatchType.String);
+
+            Should.BeInstanceOf<StringMatchOperation>(op);
+        }
+
+        [Test]
+        public void Create_SimpleMatchAtBeginning_CreatesSimpleMatch()
+        {
+            IMatchOperation op = MatchOperationFactory.Create("{bar}/Foo", MatchType.Simple);
+
+            Should.BeInstanceOf<SimpleMatchOperation>(op);
+        }
+
+        [Test]
+        public void Create_SimpleMatchAtEnd_CreatesSimpleMatch()
+        {
+            IMatchOperation op = MatchOperationFactory.Create("/Foo/{bar}", MatchType.Simple);
+
+            Should.BeInstanceOf<SimpleMatchOperation>(op);
+        }
+
+        [Test]
+        public void Create_SimpleMatchInMiddle_CreatesSimpleMatch()
+        {
+            IMatchOperation op = MatchOperationFactory.Create("/Foo/{bar}/", MatchType.Simple);
+
+            Should.BeInstanceOf<SimpleMatchOperation>(op);
+        }
+
+        [Test]
+        public void Create_SimpleMatchIsWholePattern_CreatesSimpleMatch()
+        {
+            IMatchOperation op = MatchOperationFactory.Create("{bar}", MatchType.Simple);
+
+            Should.BeInstanceOf<SimpleMatchOperation>(op);
+        }
+
+        [Test]
         public void TestCreateNull()
         {
             Should.Throw<ArgumentNullException>(() => MatchOperationFactory.Create(null, MatchType.Nop));
         }
 
-        [Test()]
+        [Test]
         public void TestIsNop()
         {
             IMatchOperation op = MatchOperationFactory.Create(String.Empty, MatchType.Nop);
             Should.BeInstanceOf<NopMatchOperation>(op, "a1");
         }
 
-        [Test()]
+        [Test]
         public void TestIsRegex()
         {
             IMatchOperation op = MatchOperationFactory.Create("dog.", MatchType.Regex);
@@ -85,54 +128,6 @@ namespace Manos.Routing.Tests
 
             op = MatchOperationFactory.Create("dog$", MatchType.Regex);
             Should.BeInstanceOf<RegexMatchOperation>(op, "a12");
-        }
-
-        [Test]
-        public void Create_SimpleMatchInMiddle_CreatesSimpleMatch()
-        {
-            IMatchOperation op = MatchOperationFactory.Create("/Foo/{bar}/", MatchType.Simple);
-
-            Should.BeInstanceOf<SimpleMatchOperation>(op);
-        }
-
-        [Test]
-        public void Create_SimpleMatchAtBeginning_CreatesSimpleMatch()
-        {
-            IMatchOperation op = MatchOperationFactory.Create("{bar}/Foo", MatchType.Simple);
-
-            Should.BeInstanceOf<SimpleMatchOperation>(op);
-        }
-
-        [Test]
-        public void Create_SimpleMatchAtEnd_CreatesSimpleMatch()
-        {
-            IMatchOperation op = MatchOperationFactory.Create("/Foo/{bar}", MatchType.Simple);
-
-            Should.BeInstanceOf<SimpleMatchOperation>(op);
-        }
-
-        [Test]
-        public void Create_SimpleMatchIsWholePattern_CreatesSimpleMatch()
-        {
-            IMatchOperation op = MatchOperationFactory.Create("{bar}", MatchType.Simple);
-
-            Should.BeInstanceOf<SimpleMatchOperation>(op);
-        }
-
-        [Test]
-        public void Create_EscapedOpenSimpleMatch_CreatesStringMatch()
-        {
-            IMatchOperation op = MatchOperationFactory.Create("{{bar}", MatchType.String);
-
-            Should.BeInstanceOf<StringMatchOperation>(op);
-        }
-
-        [Test]
-        public void Create_EscapedCloseSimpleMatch_CreatesStringMatch()
-        {
-            IMatchOperation op = MatchOperationFactory.Create("{bar}}", MatchType.String);
-
-            Should.BeInstanceOf<StringMatchOperation>(op);
         }
 
         [Test]

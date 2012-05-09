@@ -23,98 +23,54 @@
 //
 
 
-
 using System;
-using System.Text;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-
-using Manos.IO;
-using Manos.Http;
+using System.Text;
 using Manos.Collections;
+using Manos.IO;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
+    public interface IHttpRequest : IDisposable
+    {
+        HttpMethod Method { get; set; }
 
-	public interface IHttpRequest : IDisposable {
-		
-		HttpMethod Method {
-			get;
-			set;
-		}
-		
-		string Path {
-			get;
-			set;
-		}
+        string Path { get; set; }
 
-		DataDictionary Data {
-			get;	
-		}
-		
-		DataDictionary PostData {
-			get;
-		}
+        DataDictionary Data { get; }
 
-		DataDictionary QueryData {
-			get;
-			set;
-		}
+        DataDictionary PostData { get; }
 
-		DataDictionary UriData {
-			get;
-			set;
-		}
-		
-		DataDictionary Cookies {
-			get;	
-		}
+        DataDictionary QueryData { get; set; }
 
-		HttpHeaders Headers {
-			get;
-			set;
-		}
-		
-		Dictionary<string,UploadedFile> Files {
-			get;
-		}
+        DataDictionary UriData { get; set; }
 
-		int MajorVersion {
-			get;
-			set;
-		}
+        DataDictionary Cookies { get; }
 
-		int MinorVersion {
-			get;
-			set;
-		}
+        HttpHeaders Headers { get; set; }
 
-		Encoding ContentEncoding {
-			get;
-		}
+        Dictionary<string, UploadedFile> Files { get; }
 
-		ITcpSocket Socket {
-			get;
-		}
+        int MajorVersion { get; set; }
 
-		Dictionary<string,object> Properties {
-			get;
-		}
+        int MinorVersion { get; set; }
 
-		string PostBody {
-			get;
-			set;
-		}
+        Encoding ContentEncoding { get; }
 
-		void SetProperty (string name, object o);
+        ITcpSocket Socket { get; }
 
-		object GetProperty (string name);
+        Dictionary<string, object> Properties { get; }
 
-		T GetProperty<T> (string name);
-		
-		void Read (Action onClose);
-		void SetWwwFormData (DataDictionary data);
-		void WriteMetadata (StringBuilder builder);
+        string PostBody { get; set; }
 
-	}
+        void SetProperty(string name, object o);
+
+        object GetProperty(string name);
+
+        T GetProperty<T>(string name);
+
+        void Read(Action onClose);
+        void SetWwwFormData(DataDictionary data);
+        void WriteMetadata(StringBuilder builder);
+    }
 }
-

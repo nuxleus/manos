@@ -24,96 +24,74 @@
 
 
 using System;
-using System.Text;
-using System.Collections;
-using System.Collections.Generic;
-
+using Manos.IO;
 
 namespace Manos.Http.Testing
 {
-	public class MockHttpTransaction : IHttpTransaction
-	{
-		private bool aborted;
+    public class MockHttpTransaction : IHttpTransaction
+    {
+        private bool aborted;
 
-		public MockHttpTransaction (IHttpRequest request, IHttpResponse response)
-		{
-			if (request == null)
-			   throw new ArgumentNullException ("request");
+        public MockHttpTransaction(IHttpRequest request, IHttpResponse response)
+        {
+            if (request == null)
+                throw new ArgumentNullException("request");
 
-			Request = request;
+            Request = request;
 
-			Response = response;
-		}
-		
-		public String ResponseString{
-			get{
-				return (Response as MockHttpResponse).ResponseString();
-			}
-		}
-		
-		// TODO: I guess we need a mock server?
-		public HttpServer Server {
-			get { return null; }
-		}
-		
-		public Manos.IO.Context Context {
-			get;
-			private set;
-		}
-				
-		public IHttpRequest Request {
-			get;
-			private set;
-		}
+            Response = response;
+        }
 
-		public IHttpResponse Response {
-			get;
-			private set;
-		}
+        public String ResponseString
+        {
+            get { return (Response as MockHttpResponse).ResponseString(); }
+        }
 
-		public bool Aborted {
-			get;
-			private set;
-		}
+        public int AbortedStatusCode { get; private set; }
 
-		public bool ResponseReady {
-			get;
-			private set;
-		}
+        public string AbortedMessage { get; private set; }
 
-		public int AbortedStatusCode {
-		       get;
-		       private set;
-		}
+        public bool Finished { get; private set; }
 
-		public string AbortedMessage {
-		       get;
-		       private set;
-		}
+        // TODO: I guess we need a mock server?
 
-		public bool Finished {
-		       get;
-		       private set;
-		}
+        #region IHttpTransaction Members
 
-		public void Finish ()
-		{
-			Finished = true;
-		}
-		
-		public void Abort (int status, string message, params object [] p)
-		{
-			Aborted = true;
-			AbortedStatusCode = status;
-			AbortedMessage = String.Format (message, p);
-		}
+        public HttpServer Server
+        {
+            get { return null; }
+        }
 
-		public void OnRequestReady()
-		{
-		}
+        public Context Context { get; private set; }
 
-		public void OnResponseFinished ()
-		{
-		}
-	}
+        public IHttpRequest Request { get; private set; }
+
+        public IHttpResponse Response { get; private set; }
+
+        public bool Aborted { get; private set; }
+
+        public bool ResponseReady { get; private set; }
+
+        public void Abort(int status, string message, params object[] p)
+        {
+            Aborted = true;
+            AbortedStatusCode = status;
+            AbortedMessage = String.Format(message, p);
+        }
+
+        public void OnRequestReady()
+        {
+        }
+
+        public void OnResponseFinished()
+        {
+        }
+
+        #endregion
+
+        public void Finish()
+        {
+            Finished = true;
+        }
+    }
 }

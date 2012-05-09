@@ -24,28 +24,24 @@
 
 
 using System;
-using System.Reflection;
-
 using Manos.Http;
 
-namespace Manos {
-	
-	/// <summary>
-	/// Indicates that the decorated method should respond to any specified routes when the DELETE verb is used for the request.
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-	public class DeleteAttribute : HttpMethodAttribute {
+namespace Manos
+{
+    /// <summary>
+    /// Indicates that the decorated method should respond to any specified routes when the DELETE verb is used for the request.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public class DeleteAttribute : HttpMethodAttribute
+    {
+        public DeleteAttribute()
+        {
+            Methods = new[] {HttpMethod.HTTP_DELETE};
+        }
 
-		public DeleteAttribute ()
-		{
-			Methods = new HttpMethod[] { HttpMethod.HTTP_DELETE };
-		}
-		
-		public DeleteAttribute (params string[] patterns) : base(patterns)
-		{
-			Methods = new HttpMethod[] { HttpMethod.HTTP_DELETE };
-		}
-	}
+        public DeleteAttribute(params string[] patterns) : base(patterns)
+        {
+            Methods = new[] {HttpMethod.HTTP_DELETE};
+        }
+    }
 }
-
-

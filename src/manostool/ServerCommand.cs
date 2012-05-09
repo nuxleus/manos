@@ -24,16 +24,13 @@
 
 
 using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Collections;
 using System.Collections.Generic;
-
-using Manos;
-
-#if !DISABLE_POSIX
+using System.Diagnostics;
+using System.IO;
+using Manos.IO;
 using Mono.Unix.Native;
+#if !DISABLE_POSIX
+
 #endif
 
 namespace Manos.Tool
@@ -41,12 +38,12 @@ namespace Manos.Tool
     public class ServerCommand
     {
         private ManosApp app;
+        private string application_assembly;
 
         private int? port;
         private int? securePort;
-        private int? spdyport;
         private int? securespdyport;
-        private string application_assembly;
+        private int? spdyport;
 
         public ServerCommand(Environment env)
             : this(env, new List<string>())
@@ -59,17 +56,9 @@ namespace Manos.Tool
             Arguments = args;
         }
 
-        public Environment Environment
-        {
-            get;
-            private set;
-        }
+        public Environment Environment { get; private set; }
 
-        public IList<string> Arguments
-        {
-            get;
-            set;
-        }
+        public IList<string> Arguments { get; set; }
 
         public string ApplicationAssembly
         {
@@ -93,7 +82,7 @@ namespace Manos.Tool
             {
                 if (port == null)
                     return 8080;
-                return (int)port;
+                return (int) port;
             }
             set
             {
@@ -105,10 +94,7 @@ namespace Manos.Tool
 
         public int? SecurePort
         {
-            get
-            {
-                return securePort;
-            }
+            get { return securePort; }
             set
             {
                 if (securePort <= 0)
@@ -116,13 +102,10 @@ namespace Manos.Tool
                 securePort = value;
             }
         }
+
         public int? SpdyPort
         {
-            get
-            {
-
-                return spdyport;
-            }
+            get { return spdyport; }
             set
             {
                 if (value <= 0)
@@ -135,10 +118,7 @@ namespace Manos.Tool
 
         public int? SecureSpdyPort
         {
-            get
-            {
-                return securespdyport;
-            }
+            get { return securespdyport; }
             set
             {
                 if (value <= 0)
@@ -147,48 +127,24 @@ namespace Manos.Tool
             }
         }
 
-        public string User
-        {
-            get;
-            set;
-        }
+        public string User { get; set; }
 
-        public string IPAddress
-        {
-            get;
-            set;
-        }
+        public string IPAddress { get; set; }
 
-        public string CertificateFile
-        {
-            get;
-            set;
-        }
+        public string CertificateFile { get; set; }
 
-        public string KeyFile
-        {
-            get;
-            set;
-        }
+        public string KeyFile { get; set; }
 
-        public string Browse
-        {
-            get;
-            set;
-        }
+        public string Browse { get; set; }
 
-        public string DocumentRoot
-        {
-            get;
-            set;
-        }
+        public string DocumentRoot { get; set; }
 
         public void Run()
         {
             // Setup the document root
             if (DocumentRoot != null)
             {
-                System.IO.Directory.SetCurrentDirectory(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DocumentRoot));
+                Directory.SetCurrentDirectory(Path.Combine(Directory.GetCurrentDirectory(), DocumentRoot));
             }
 
             // Load the config.
@@ -201,40 +157,40 @@ namespace Manos.Tool
             if (User != null)
                 SetServerUser(User);
 
-            var listenAddress = Manos.IO.IPAddress.Any;
+            IPAddress listenAddress = IO.IPAddress.Any;
 
             if (IPAddress != null)
-                listenAddress = Manos.IO.IPAddress.Parse(IPAddress);
+                listenAddress = IO.IPAddress.Parse(IPAddress);
 
             app.StartInternal();
 
-            AppHost.ListenAt(new Manos.IO.IPEndPoint(listenAddress, Port));
+            AppHost.ListenAt(new IPEndPoint(listenAddress, Port));
 
             //AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
             if (SecurePort != null)
             {
                 AppHost.InitializeTLS("NORMAL");
-                AppHost.SecureListenAt(new Manos.IO.IPEndPoint(listenAddress, SecurePort.Value), CertificateFile, KeyFile);
+                AppHost.SecureListenAt(new IPEndPoint(listenAddress, SecurePort.Value), CertificateFile, KeyFile);
                 Console.WriteLine("Running {0} on secure port {1}.", app, SecurePort);
             }
             if (SpdyPort != null)
             {
-                AppHost.SpdyListenAt(new Manos.IO.IPEndPoint(listenAddress, SpdyPort.Value));
+                AppHost.SpdyListenAt(new IPEndPoint(listenAddress, SpdyPort.Value));
                 Console.WriteLine("Running {0} with SPDY on port {1}.", app, SpdyPort);
             }
             if (SecureSpdyPort != null)
             {
                 if (SecurePort == null)
                     AppHost.InitializeTLS("NORMAL");
-                AppHost.SecureSpdyListenAt(new Manos.IO.IPEndPoint(listenAddress, SecureSpdyPort.Value), CertificateFile, KeyFile);
+                AppHost.SecureSpdyListenAt(new IPEndPoint(listenAddress, SecureSpdyPort.Value), CertificateFile, KeyFile);
                 Console.WriteLine("Running {0} with SPDY on secure port {1}.", app, SecureSpdyPort);
             }
 
             if (Browse != null)
             {
-                var hostname = IPAddress == null ? "http://localhost" : "http://" + IPAddress;
+                string hostname = IPAddress == null ? "http://localhost" : "http://" + IPAddress;
                 if (Port != 80)
-                    hostname += ":" + Port.ToString();
+                    hostname += ":" + Port;
 
                 if (Browse == "")
                 {
@@ -256,9 +212,9 @@ namespace Manos.Tool
 
         private static void DoBrowse(ManosApp app, object user_data)
         {
-            string BrowseTo = user_data as string;
+            var BrowseTo = user_data as string;
             Console.WriteLine("Launching {0}", BrowseTo);
-            System.Diagnostics.Process.Start(BrowseTo);
+            Process.Start(BrowseTo);
         }
 
         public void SetServerUser(string user)
@@ -288,7 +244,7 @@ namespace Manos.Tool
 #if DISABLE_POSIX
 			throw new InvalidOperationException ("Attempt to set user on a non-posix build.");
 #else
-            string user = user_data as string;
+            var user = user_data as string;
 
             Console.WriteLine("setting user to: '{0}'", user);
 
@@ -309,11 +265,11 @@ namespace Manos.Tool
             if (error != 0)
             {
                 AppHost.Stop();
-                throw new InvalidOperationException(String.Format("Unable to switch to user '{0}' error: '{1}'.", user, error));
+                throw new InvalidOperationException(String.Format("Unable to switch to user '{0}' error: '{1}'.", user,
+                                                                  error));
             }
 
 #endif
         }
-
     }
 }

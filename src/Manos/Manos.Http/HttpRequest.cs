@@ -23,220 +23,226 @@
 //
 
 
-
-
 using System;
-using System.Text;
 using System.Globalization;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Specialized;
-
-
-using Libev;
-using Manos.IO;
+using System.Text;
 using Manos.Collections;
+using Manos.IO;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
+    public class HttpRequest : HttpEntity, IHttpRequest
+    {
+        private readonly StringBuilder query_data_builder = new StringBuilder();
 
-	public class HttpRequest : HttpEntity, IHttpRequest {
-		
-		private StringBuilder query_data_builder = new StringBuilder ();
+        private DataDictionary cookies;
+        private DataDictionary query_data;
+        private DataDictionary uri_data;
 
-		private DataDictionary uri_data;
-		private	DataDictionary query_data;
-		private DataDictionary cookies;
 
-		
-		public HttpRequest (Context context, string address)
-			: base (context)
-		{
-			Uri uri = null;
+        public HttpRequest(Context context, string address)
+            : base(context)
+        {
+            Uri uri = null;
 
-			if (!Uri.TryCreate (address, UriKind.Absolute, out uri))
-				throw new Exception ("Invalid URI: '" + address + "'.");
+            if (!Uri.TryCreate(address, UriKind.Absolute, out uri))
+                throw new Exception("Invalid URI: '" + address + "'.");
 
-			RemoteAddress = uri.Host;
-			RemotePort = uri.Port;
-			Path = uri.AbsolutePath;
+            RemoteAddress = uri.Host;
+            RemotePort = uri.Port;
+            Path = uri.AbsolutePath;
 
-			Method = HttpMethod.HTTP_GET;
-			MajorVersion = 1;
-			MinorVersion = 1;
-		}
+            Method = HttpMethod.HTTP_GET;
+            MajorVersion = 1;
+            MinorVersion = 1;
+        }
 
-		public HttpRequest (Context context, string remote_address, int port)
-			: this (context, remote_address)
-		{
-			RemotePort = port;
-		}
+        public HttpRequest(Context context, string remote_address, int port)
+            : this(context, remote_address)
+        {
+            RemotePort = port;
+        }
 
-		public HttpRequest (IHttpTransaction transaction, ITcpSocket stream)
-			: base (transaction.Context)
-		{
-			Transaction = transaction;
-			Socket = stream;
-			RemoteAddress = stream.RemoteEndpoint.Address.ToString();
-			RemotePort = stream.RemoteEndpoint.Port;
-		}
+        public HttpRequest(IHttpTransaction transaction, ITcpSocket stream)
+            : base(transaction.Context)
+        {
+            Transaction = transaction;
+            Socket = stream;
+            RemoteAddress = stream.RemoteEndpoint.Address.ToString();
+            RemotePort = stream.RemoteEndpoint.Port;
+        }
 
-		public IHttpTransaction Transaction {
-			get;
-			private set;
-		}
+        public IHttpTransaction Transaction { get; private set; }
 
-		public DataDictionary QueryData {
-			get {
-				if (query_data == null) {
-					query_data = new DataDictionary ();
-					Data.Children.Add (query_data);
-				}
-				return query_data;
-			}
-			set {
-				SetDataDictionary (query_data, value);
-				query_data = value;
-			}
-		}
+        #region IHttpRequest Members
 
-		public DataDictionary UriData {
-			get {
-				if (uri_data == null) {
-					uri_data = new DataDictionary ();
-					Data.Children.Add (uri_data);
-				}
-				return uri_data;
-			}
-			set {
-				SetDataDictionary (uri_data, value);
-				uri_data = value;
-			}
-		}
+        public DataDictionary QueryData
+        {
+            get
+            {
+                if (query_data == null)
+                {
+                    query_data = new DataDictionary();
+                    Data.Children.Add(query_data);
+                }
+                return query_data;
+            }
+            set
+            {
+                SetDataDictionary(query_data, value);
+                query_data = value;
+            }
+        }
 
-		public DataDictionary Cookies {
-			get {
-				if (cookies == null)
-					cookies = ParseCookies ();
-				return cookies;
-			}
-		}
+        public DataDictionary UriData
+        {
+            get
+            {
+                if (uri_data == null)
+                {
+                    uri_data = new DataDictionary();
+                    Data.Children.Add(uri_data);
+                }
+                return uri_data;
+            }
+            set
+            {
+                SetDataDictionary(uri_data, value);
+                uri_data = value;
+            }
+        }
 
-		public override void Reset ()
-		{
-			Path = null;
+        public DataDictionary Cookies
+        {
+            get
+            {
+                if (cookies == null)
+                    cookies = ParseCookies();
+                return cookies;
+            }
+        }
 
-			uri_data = null;
-			query_data = null;
-			cookies = null;
+        public void SetWwwFormData(DataDictionary data)
+        {
+            PostData = data;
+        }
 
-			base.Reset ();
-		}
+        public override void WriteMetadata(StringBuilder builder)
+        {
+            builder.Append(Encoding.ASCII.GetString(HttpMethodBytes.GetBytes(Method)));
+            builder.Append(" ");
+            builder.Append(Path);
+            builder.Append(" HTTP/");
+            builder.Append(MajorVersion.ToString(CultureInfo.InvariantCulture));
+            builder.Append(".");
+            builder.Append(MinorVersion.ToString(CultureInfo.InvariantCulture));
+            builder.Append("\r\n");
+            Headers.Write(builder, null, Encoding.ASCII);
+        }
 
-		public void SetWwwFormData (DataDictionary data)
-		{
-			PostData = data;
-		}
+        #endregion
 
-		private DataDictionary ParseCookies ()
-		{
-			string cookie_header;
+        public override void Reset()
+        {
+            Path = null;
 
-			if (!Headers.TryGetValue ("Cookie", out cookie_header))
-				return new DataDictionary ();
+            uri_data = null;
+            query_data = null;
+            cookies = null;
 
-			return HttpCookie.FromHeader (cookie_header);
-		}
+            base.Reset();
+        }
 
-		private int OnPath (HttpParser parser, ByteBuffer data, int pos, int len)
-		{
-			string str = Encoding.ASCII.GetString (data.Bytes, pos, len);
+        private DataDictionary ParseCookies()
+        {
+            string cookie_header;
 
-			str = HttpUtility.UrlDecode (str, Encoding.ASCII);
-			Path = Path == null ? str : String.Concat (Path, str);
-			return 0;
-		}
+            if (!Headers.TryGetValue("Cookie", out cookie_header))
+                return new DataDictionary();
 
-		private int OnQueryString (HttpParser parser, ByteBuffer data, int pos, int len)
-		{
-			string str = Encoding.ASCII.GetString (data.Bytes, pos, len);
+            return HttpCookie.FromHeader(cookie_header);
+        }
 
-			query_data_builder.Append (str);
-			return 0;
-		}
+        private int OnPath(HttpParser parser, ByteBuffer data, int pos, int len)
+        {
+            string str = Encoding.ASCII.GetString(data.Bytes, pos, len);
 
-		protected override void OnFinishedReading (HttpParser parser)
-		{
-			base.OnFinishedReading (parser);
+            str = HttpUtility.UrlDecode(str, Encoding.ASCII);
+            Path = Path == null ? str : String.Concat(Path, str);
+            return 0;
+        }
 
-			MajorVersion = parser.Major;
-			MinorVersion = parser.Minor;
-			Method = parser.HttpMethod;
+        private int OnQueryString(HttpParser parser, ByteBuffer data, int pos, int len)
+        {
+            string str = Encoding.ASCII.GetString(data.Bytes, pos, len);
 
-			if (query_data_builder.Length != 0) {
-				QueryData = HttpUtility.ParseUrlEncodedData (query_data_builder.ToString ());
-				query_data_builder.Length = 0;
-			}
+            query_data_builder.Append(str);
+            return 0;
+        }
 
-			Transaction.OnRequestReady ();
-		}
+        protected override void OnFinishedReading(HttpParser parser)
+        {
+            base.OnFinishedReading(parser);
 
-		public override ParserSettings CreateParserSettings ()
-		{
-			ParserSettings settings = new ParserSettings ();
+            MajorVersion = parser.Major;
+            MinorVersion = parser.Minor;
+            Method = parser.HttpMethod;
 
-			settings.OnPath = OnPath;
-			settings.OnQueryString = OnQueryString;
+            if (query_data_builder.Length != 0)
+            {
+                QueryData = HttpUtility.ParseUrlEncodedData(query_data_builder.ToString());
+                query_data_builder.Length = 0;
+            }
 
-			return settings;
-		}
+            Transaction.OnRequestReady();
+        }
 
-		public void Execute ()
-		{
-			var remote = new IPEndPoint(IPAddress.Parse (RemoteAddress), RemotePort);
-			Socket = this.Context.CreateTcpSocket (remote.AddressFamily);
-			Socket.Connect (remote, delegate {
-				Stream = new HttpStream (this, Socket.GetSocketStream ());
-				Stream.Chunked = false;
-				Stream.AddHeaders = false;
+        public override ParserSettings CreateParserSettings()
+        {
+            var settings = new ParserSettings();
 
-				byte [] body = GetBody ();
+            settings.OnPath = OnPath;
+            settings.OnQueryString = OnQueryString;
 
-				if (body != null) {
-					Headers.ContentLength = body.Length;
-					Stream.Write (body, 0, body.Length);
-				}
+            return settings;
+        }
 
-				Stream.End (() => {
-					HttpResponse response = new HttpResponse (Context, this, Socket);
+        public void Execute()
+        {
+            var remote = new IPEndPoint(IPAddress.Parse(RemoteAddress), RemotePort);
+            Socket = Context.CreateTcpSocket(remote.AddressFamily);
+            Socket.Connect(remote, delegate
+                                       {
+                                           Stream = new HttpStream(this, Socket.GetSocketStream());
+                                           Stream.Chunked = false;
+                                           Stream.AddHeaders = false;
+
+                                           byte[] body = GetBody();
+
+                                           if (body != null)
+                                           {
+                                               Headers.ContentLength = body.Length;
+                                               Stream.Write(body, 0, body.Length);
+                                           }
+
+                                           Stream.End(() =>
+                                                          {
+                                                              var response = new HttpResponse(Context, this, Socket);
 
 //					response.OnCompleted += () => {
 //						if (OnResponse != null)
 //							OnResponse (response);
 //					};
-					
-					response.Read (() => {
-						if (OnResponse != null) OnResponse (response);
-					});
-				});
-			}, ex => {
-				// TODO: figure out what to do here
-			});
-		}
 
-		public override void WriteMetadata (StringBuilder builder)
-		{
-			builder.Append (Encoding.ASCII.GetString (HttpMethodBytes.GetBytes (Method)));
-			builder.Append (" ");
-			builder.Append (Path);
-			builder.Append (" HTTP/");
-			builder.Append (MajorVersion.ToString (CultureInfo.InvariantCulture));
-			builder.Append (".");
-			builder.Append (MinorVersion.ToString (CultureInfo.InvariantCulture));
-			builder.Append ("\r\n");
-			Headers.Write (builder, null, Encoding.ASCII);
-		}
+                                                              response.Read(
+                                                                  () => { if (OnResponse != null) OnResponse(response); });
+                                                          });
+                                       }, ex =>
+                                              {
+                                                  // TODO: figure out what to do here
+                                              });
+        }
 
-		public event Action<IHttpResponse> OnResponse;
-	}
+        public event Action<IHttpResponse> OnResponse;
+    }
 }
-

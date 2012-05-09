@@ -24,41 +24,36 @@
 
 
 using System;
-using System.Reflection;
-
 using Manos.Http;
 
-namespace Manos {
-	
-	/// <summary>
-	/// Indicates that the decorated method should respond to any specified routes when the POST verb is used for the request.
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-	public class PostAttribute : HttpMethodAttribute {
-		
-				
-		/// <summary>
-		/// Specifies that the decoraetd method should only be invoked when the http POST verb is used.
-		/// </summary>
-		/// <remarks>
-		/// Assumes that the method will be implicitly matched.
-		/// </remarks>
-		public PostAttribute ()
-		{
-			Methods = new HttpMethod[] { HttpMethod.HTTP_POST };
-		}
-		
-		/// <summary>
-		/// Specifies that the decorated method should be invoked whenever a POST request matches any of the patterns declared)
-		/// </summary>
-		/// <param name="patterns">
-		/// A <see cref="T:System.String[]"/> of patterns to match
-		/// </param>
-		public PostAttribute (params string [] patterns) : base (patterns)
-		{
-			Methods = new HttpMethod [] { HttpMethod.HTTP_POST };
-		}
-	}
+namespace Manos
+{
+    /// <summary>
+    /// Indicates that the decorated method should respond to any specified routes when the POST verb is used for the request.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public class PostAttribute : HttpMethodAttribute
+    {
+        /// <summary>
+        /// Specifies that the decoraetd method should only be invoked when the http POST verb is used.
+        /// </summary>
+        /// <remarks>
+        /// Assumes that the method will be implicitly matched.
+        /// </remarks>
+        public PostAttribute()
+        {
+            Methods = new[] {HttpMethod.HTTP_POST};
+        }
+
+        /// <summary>
+        /// Specifies that the decorated method should be invoked whenever a POST request matches any of the patterns declared)
+        /// </summary>
+        /// <param name="patterns">
+        /// A <see cref="T:System.String[]"/> of patterns to match
+        /// </param>
+        public PostAttribute(params string[] patterns) : base(patterns)
+        {
+            Methods = new[] {HttpMethod.HTTP_POST};
+        }
+    }
 }
-
-

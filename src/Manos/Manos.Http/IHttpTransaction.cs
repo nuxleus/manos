@@ -23,45 +23,27 @@
 //
 
 
-
-using System;
-using System.Collections;
-using System.Collections.Generic;
 using Manos.IO;
 
+namespace Manos.Http
+{
+    public interface IHttpTransaction
+    {
+        Context Context { get; }
 
-namespace Manos.Http {
+        IHttpRequest Request { get; }
 
-	public interface IHttpTransaction {
-		
-		Context Context {
-			get;
-		}
+        IHttpResponse Response { get; }
 
-		IHttpRequest Request {
-			get;
-		}
+        HttpServer Server { get; }
 
-		IHttpResponse Response {
-			get;
-		}
+        bool Aborted { get; }
 
-		HttpServer Server {
-			get;
-		}
+        bool ResponseReady { get; }
 
-		bool Aborted {
-			get;	
-		}
+        void OnRequestReady();
+        void OnResponseFinished();
 
-		bool ResponseReady {
-			get;
-		}
-
-		void OnRequestReady ();
-		void OnResponseFinished ();
-
-		void Abort (int status, string message, params object [] p);
-	}
+        void Abort(int status, string message, params object[] p);
+    }
 }
-

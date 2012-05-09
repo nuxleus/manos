@@ -2,34 +2,33 @@ using System;
 
 namespace Manos.Spdy
 {
-	public class GoawayFrame : ControlFrame
-	{
-		public int LastGoodStreamID { get; set; }
+    public class GoawayFrame : ControlFrame
+    {
+        public GoawayFrame()
+        {
+            Type = ControlFrameType.GOAWAY;
+        }
 
-		public int StatusCode { get; set; }
+        public GoawayFrame(byte[] data, int offset, int length)
+        {
+            Type = ControlFrameType.GOAWAY;
+            base.Parse(data, offset, length);
+            LastGoodStreamID = Util.BuildInt(data, offset + 8, 4);
+            StatusCode = Util.BuildInt(data, offset + 12, 4);
+        }
 
-		public GoawayFrame ()
-		{
-			this.Type = ControlFrameType.GOAWAY;
-		}
+        public int LastGoodStreamID { get; set; }
 
-		public GoawayFrame (byte [] data,int offset,int length)
-		{
-			this.Type = ControlFrameType.GOAWAY;
-			base.Parse (data, offset, length);
-			this.LastGoodStreamID = Util.BuildInt (data, offset + 8, 4);
-			this.StatusCode = Util.BuildInt (data, offset + 12, 4);
-		}
+        public int StatusCode { get; set; }
 
-		public new byte [] Serialize ()
-		{
-			this.Length = 8;
-			var head = base.Serialize ();
-			Array.Resize (ref head, 16);
-			Util.IntToBytes (this.LastGoodStreamID, ref head, 8, 4);
-			Util.IntToBytes (this.StatusCode, ref head, 12, 4);
-			return head;
-		}
-	}
+        public new byte[] Serialize()
+        {
+            Length = 8;
+            byte[] head = base.Serialize();
+            Array.Resize(ref head, 16);
+            Util.IntToBytes(LastGoodStreamID, ref head, 8, 4);
+            Util.IntToBytes(StatusCode, ref head, 12, 4);
+            return head;
+        }
+    }
 }
-

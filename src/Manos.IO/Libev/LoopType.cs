@@ -1,12 +1,9 @@
-using System;
-
 namespace Libev
 {
-	enum LoopType
-	{
-		Blocking,
-		NonBlocking,
-		Oneshot,
-	}
+    internal enum LoopType
+    {
+        Blocking,
+        NonBlocking,
+        Oneshot,
+    }
 }
-

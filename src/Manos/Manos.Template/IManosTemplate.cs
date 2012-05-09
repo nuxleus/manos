@@ -23,17 +23,12 @@
 //
 
 
-
-using System;
 using System.IO;
 
-using Manos;
-
-namespace Manos.Templates {
-	
-	public interface IManosTemplate
-	{
-		void Render (IManosContext context, Stream stream, object the_arg);
-	}	
+namespace Manos.Templates
+{
+    public interface IManosTemplate
+    {
+        void Render(IManosContext context, Stream stream, object the_arg);
+    }
 }
-
