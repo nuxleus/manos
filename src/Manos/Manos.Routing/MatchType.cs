@@ -23,8 +23,6 @@
 //
 
 
-using System;
-
 namespace Manos.Routing
 {
     public enum MatchType
@@ -35,4 +33,3 @@ namespace Manos.Routing
         Nop
     }
 }
-

@@ -24,31 +24,24 @@
 
 
 using System;
-using NUnit.Framework;
-
-using Manos;
 using Manos.Http;
-using Manos.Routing;
-using Manos.Testing;
 using Manos.Http.Testing;
-
-
+using Manos.Routing;
 using Manos.ShouldExt;
+using Manos.Testing;
+using NUnit.Framework;
 
 namespace Manos.Tests
 {
-
-    [TestFixture()]
+    [TestFixture]
     public class ManosModuleTest
     {
-
         private void FakeAction(IManosContext ctx)
         {
         }
 
         private class FakeModule : MockManosModule
         {
-
             public static void FakeAction(IManosContext ctx)
             {
             }
@@ -56,27 +49,16 @@ namespace Manos.Tests
 
         private class FakeModuleWithUninitializedModuleProperty : MockManosModule
         {
-
-            public FakeModule MyModule
-            {
-                get;
-                set;
-            }
+            public FakeModule MyModule { get; set; }
         }
 
         private class FakeModuleWithUninitializedModulePropertyAndNoPublicSetter : MockManosModule
         {
-
-            public FakeModule MyModule
-            {
-                get;
-                private set;
-            }
+            public FakeModule MyModule { get; private set; }
         }
 
         private class FakeModuleWithInitializedModuleProperty : MockManosModule
         {
-
             private FakeModule my_module;
 
             public FakeModule MyModule
@@ -90,10 +72,40 @@ namespace Manos.Tests
             }
         }
 
-        [Test()]
+        [Test]
+        public void AddImplicitProperties_AddInitializedModule_AddsModuleToRoutes()
+        {
+            var m = new FakeModuleWithInitializedModuleProperty();
+
+            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "/MyModule/FakeAction");
+            IManosTarget r = m.Routes.Find(request);
+            Assert.IsNotNull(r);
+        }
+
+        [Test]
+        public void AddImplicitProperties_AddUninitializedModuleWithNoPublicSetter_AddsModuleToRoutes()
+        {
+            var m = new FakeModuleWithUninitializedModulePropertyAndNoPublicSetter();
+
+            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "/MyModule/FakeAction");
+            IManosTarget r = m.Routes.Find(request);
+            Assert.IsNotNull(r);
+        }
+
+        [Test]
+        public void AddImplicitProperties_AddUninitializedModule_AddsModuleToRoutes()
+        {
+            var m = new FakeModuleWithUninitializedModuleProperty();
+
+            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "/MyModule/FakeAction");
+            IManosTarget r = m.Routes.Find(request);
+            Assert.IsNotNull(r);
+        }
+
+        [Test]
         public void TestAddRouteNull()
         {
-            ManosModule m = new ManosModule();
+            var m = new ManosModule();
 
             Should.Throw<ArgumentNullException>(() => m.Route(new ManosModule(), null, null));
             Should.Throw<ArgumentNullException>(() => m.Route(new ManosAction(FakeAction), null, null));
@@ -102,22 +114,183 @@ namespace Manos.Tests
         }
 
         [Test]
-        public void TestRouteToTarget()
+        public void TestDeleteToModule()
         {
-            HttpMethod[] methods = new HttpMethod[] {
-				HttpMethod.HTTP_GET, HttpMethod.HTTP_PUT, HttpMethod.HTTP_POST, HttpMethod.HTTP_HEAD,
-				HttpMethod.HTTP_DELETE, HttpMethod.HTTP_TRACE, HttpMethod.HTTP_OPTIONS,
-			};
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_DELETE, "/FakeModule/FakeAction");
 
-            for (int i = 0; i < methods.Length; i++)
-            {
-                var m = new MockManosModule();
-                var req = new MockHttpRequest(methods[i], "/Foobar");
+            m.Delete("/FakeModule", new FakeModule());
 
-                m.Route("/Foobar", new ManosAction(FakeAction));
+            //
+            // I guess technically this is testing the auto name registering too
+            //
+            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
 
-                Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
-            }
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestDeleteToTarget()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_DELETE, "/Foobar");
+
+            m.Delete("/Foobar", new ManosAction(FakeAction));
+            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestGetToModule()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
+
+            m.Get("/FakeModule", new FakeModule());
+
+            //
+            // I guess technically this is testing the auto name registering too
+            //
+            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/FakeModule/FakeAction");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestGetToTarget()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
+
+            m.Get("/Foobar", new ManosAction(FakeAction));
+            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/Foobar");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestHeadToModule()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_HEAD, "/FakeModule/FakeAction");
+
+            m.Head("/FakeModule", new FakeModule());
+
+            //
+            // I guess technically this is testing the auto name registering too
+            //
+            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestHeadToTarget()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_HEAD, "/Foobar");
+
+            m.Head("/Foobar", new ManosAction(FakeAction));
+            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestOptionsToModule()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_OPTIONS, "/FakeModule/FakeAction");
+
+            m.Options("/FakeModule", new FakeModule());
+
+            //
+            // I guess technically this is testing the auto name registering too
+            //
+            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestOptionsToTarget()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_OPTIONS, "/Foobar");
+
+            m.Options("/Foobar", new ManosAction(FakeAction));
+            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestPostToModule()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_POST, "/FakeModule/FakeAction");
+
+            m.Post("/FakeModule", new FakeModule());
+
+            //
+            // I guess technically this is testing the auto name registering too
+            //
+            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestPostToTarget()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_POST, "/Foobar");
+
+            m.Post("/Foobar", new ManosAction(FakeAction));
+            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestPutToModule()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_PUT, "/FakeModule/FakeAction");
+
+            m.Put("/FakeModule", new FakeModule());
+
+            //
+            // I guess technically this is testing the auto name registering too
+            //
+            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/FakeModule/FakeAction");
+            Assert.IsNull(m.Routes.Find(req));
+        }
+
+        [Test]
+        public void TestPutToTarget()
+        {
+            var m = new MockManosModule();
+            var req = new MockHttpRequest(HttpMethod.HTTP_PUT, "/Foobar");
+
+            m.Put("/Foobar", new ManosAction(FakeAction));
+            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+
+            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/Foobar");
+            Assert.IsNull(m.Routes.Find(req));
         }
 
         [Test]
@@ -145,10 +318,11 @@ namespace Manos.Tests
         [Test]
         public void TestRouteToModule()
         {
-            HttpMethod[] methods = new HttpMethod[] {
-				HttpMethod.HTTP_GET, HttpMethod.HTTP_PUT, HttpMethod.HTTP_POST, HttpMethod.HTTP_HEAD,
-				HttpMethod.HTTP_DELETE, HttpMethod.HTTP_TRACE, HttpMethod.HTTP_OPTIONS,
-			};
+            var methods = new[]
+                              {
+                                  HttpMethod.HTTP_GET, HttpMethod.HTTP_PUT, HttpMethod.HTTP_POST, HttpMethod.HTTP_HEAD,
+                                  HttpMethod.HTTP_DELETE, HttpMethod.HTTP_TRACE, HttpMethod.HTTP_OPTIONS,
+                              };
 
             for (int i = 0; i < methods.Length; i++)
             {
@@ -165,175 +339,32 @@ namespace Manos.Tests
         }
 
         [Test]
-        public void TestGetToTarget()
+        public void TestRouteToTarget()
         {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
+            var methods = new[]
+                              {
+                                  HttpMethod.HTTP_GET, HttpMethod.HTTP_PUT, HttpMethod.HTTP_POST, HttpMethod.HTTP_HEAD,
+                                  HttpMethod.HTTP_DELETE, HttpMethod.HTTP_TRACE, HttpMethod.HTTP_OPTIONS,
+                              };
 
-            m.Get("/Foobar", new ManosAction(FakeAction));
-            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+            for (int i = 0; i < methods.Length; i++)
+            {
+                var m = new MockManosModule();
+                var req = new MockHttpRequest(methods[i], "/Foobar");
 
-            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/Foobar");
-            Assert.IsNull(m.Routes.Find(req));
+                m.Route("/Foobar", new ManosAction(FakeAction));
+
+                Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
+            }
         }
 
         [Test]
-        public void TestGetToModule()
+        public void TestTraceToModule()
         {
             var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
+            var req = new MockHttpRequest(HttpMethod.HTTP_TRACE, "/FakeModule/FakeAction");
 
-            m.Get("/FakeModule", new FakeModule());
-
-            //
-            // I guess technically this is testing the auto name registering too
-            //
-            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/FakeModule/FakeAction");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestPutToTarget()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_PUT, "/Foobar");
-
-            m.Put("/Foobar", new ManosAction(FakeAction));
-            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/Foobar");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestPutToModule()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_PUT, "/FakeModule/FakeAction");
-
-            m.Put("/FakeModule", new FakeModule());
-
-            //
-            // I guess technically this is testing the auto name registering too
-            //
-            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_POST, "/FakeModule/FakeAction");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestPostToTarget()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_POST, "/Foobar");
-
-            m.Post("/Foobar", new ManosAction(FakeAction));
-            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestPostToModule()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_POST, "/FakeModule/FakeAction");
-
-            m.Post("/FakeModule", new FakeModule());
-
-            //
-            // I guess technically this is testing the auto name registering too
-            //
-            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestDeleteToTarget()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_DELETE, "/Foobar");
-
-            m.Delete("/Foobar", new ManosAction(FakeAction));
-            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestDeleteToModule()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_DELETE, "/FakeModule/FakeAction");
-
-            m.Delete("/FakeModule", new FakeModule());
-
-            //
-            // I guess technically this is testing the auto name registering too
-            //
-            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestHeadToTarget()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_HEAD, "/Foobar");
-
-            m.Head("/Foobar", new ManosAction(FakeAction));
-            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestHeadToModule()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_HEAD, "/FakeModule/FakeAction");
-
-            m.Head("/FakeModule", new FakeModule());
-
-            //
-            // I guess technically this is testing the auto name registering too
-            //
-            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestOptionsToTarget()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_OPTIONS, "/Foobar");
-
-            m.Options("/Foobar", new ManosAction(FakeAction));
-            Assert.AreEqual(new ManosAction(FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestOptionsToModule()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_OPTIONS, "/FakeModule/FakeAction");
-
-            m.Options("/FakeModule", new FakeModule());
+            m.Trace("/FakeModule", new FakeModule());
 
             //
             // I guess technically this is testing the auto name registering too
@@ -355,53 +386,6 @@ namespace Manos.Tests
 
             req = new MockHttpRequest(HttpMethod.HTTP_GET, "/Foobar");
             Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void TestTraceToModule()
-        {
-            var m = new MockManosModule();
-            var req = new MockHttpRequest(HttpMethod.HTTP_TRACE, "/FakeModule/FakeAction");
-
-            m.Trace("/FakeModule", new FakeModule());
-
-            //
-            // I guess technically this is testing the auto name registering too
-            //
-            Assert.AreEqual(new ManosAction(FakeModule.FakeAction), m.Routes.Find(req).Action);
-
-            req = new MockHttpRequest(HttpMethod.HTTP_GET, "/FakeModule/FakeAction");
-            Assert.IsNull(m.Routes.Find(req));
-        }
-
-        [Test]
-        public void AddImplicitProperties_AddInitializedModule_AddsModuleToRoutes()
-        {
-            var m = new FakeModuleWithInitializedModuleProperty();
-
-            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "/MyModule/FakeAction");
-            var r = m.Routes.Find(request);
-            Assert.IsNotNull(r);
-        }
-
-        [Test]
-        public void AddImplicitProperties_AddUninitializedModule_AddsModuleToRoutes()
-        {
-            var m = new FakeModuleWithUninitializedModuleProperty();
-
-            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "/MyModule/FakeAction");
-            var r = m.Routes.Find(request);
-            Assert.IsNotNull(r);
-        }
-
-        [Test]
-        public void AddImplicitProperties_AddUninitializedModuleWithNoPublicSetter_AddsModuleToRoutes()
-        {
-            var m = new FakeModuleWithUninitializedModulePropertyAndNoPublicSetter();
-
-            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "/MyModule/FakeAction");
-            var r = m.Routes.Find(request);
-            Assert.IsNotNull(r);
         }
     }
 }

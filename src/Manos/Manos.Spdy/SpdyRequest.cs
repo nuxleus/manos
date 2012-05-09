@@ -1,46 +1,58 @@
 using System;
-using System.Text;
 using System.Collections.Generic;
-
-using Manos.IO;
-using Manos.Http;
+using System.Text;
 using Manos.Collections;
+using Manos.Http;
+using Manos.IO;
 
 namespace Manos.Spdy
 {
     public class SpdyRequest : SpdyEntity, IHttpRequest
     {
-        private static readonly long MAX_BUFFERED_CONTENT_LENGTH = 2621440; // 2.5MB (Eventually this will be an environment var)
-        private HttpHeaders headers;
+        private static readonly long MAX_BUFFERED_CONTENT_LENGTH = 2621440;
+                                     // 2.5MB (Eventually this will be an environment var)
 
-        public int StreamID { get; set; }
+        private readonly IHttpBodyHandler body_handler;
 
-        private IHttpBodyHandler body_handler;
-        private Dictionary<string, UploadedFile> uploaded_files;
-        private Dictionary<string, object> properties;
-        private DataDictionary uri_data;
-        private DataDictionary query_data;
+        private readonly Dictionary<string, HttpMethod> lookup = new Dictionary<string, HttpMethod>
+                                                                     {
+                                                                         {"OPTIONS", HttpMethod.HTTP_OPTIONS},
+                                                                         {"GET", HttpMethod.HTTP_GET},
+                                                                         {"HEAD", HttpMethod.HTTP_HEAD},
+                                                                         {"POST", HttpMethod.HTTP_POST},
+                                                                         {"PUT", HttpMethod.HTTP_PUT},
+                                                                         {"DELETE", HttpMethod.HTTP_DELETE},
+                                                                         {"TRACE", HttpMethod.HTTP_TRACE},
+                                                                         {"CONNECT", HttpMethod.HTTP_CONNECT}
+                                                                     };
+
+        private readonly byte[] rawdata;
+
         private DataDictionary cookies;
-        private DataDictionary post_data;
         private DataDictionary data;
-        private byte[] rawdata;
+        private HttpHeaders headers;
+        private DataDictionary post_data;
+        private Dictionary<string, object> properties;
+        private DataDictionary query_data;
+        private Dictionary<string, UploadedFile> uploaded_files;
+        private DataDictionary uri_data;
 
         public SpdyRequest(Context context, SynStreamFrame frame, byte[] dat = null)
             : base(context)
         {
-            var version = frame.Headers["version"];
-            var num = version.Split('/')[1];
-            var numsplit = num.Split('.');
-            this.MajorVersion = int.Parse(numsplit[0]);
-            this.MinorVersion = int.Parse(numsplit[1]);
-            this.headers = frame.Headers.ToHttpHeaders(new string[] { "version", "url" });
-            this.Path = frame.Headers["url"];
-            this.Method = MethodFromString(frame.Headers["method"]);
-            this.StreamID = frame.StreamID;
+            string version = frame.Headers["version"];
+            string num = version.Split('/')[1];
+            string[] numsplit = num.Split('.');
+            MajorVersion = int.Parse(numsplit[0]);
+            MinorVersion = int.Parse(numsplit[1]);
+            headers = frame.Headers.ToHttpHeaders(new[] {"version", "url"});
+            Path = frame.Headers["url"];
+            Method = MethodFromString(frame.Headers["method"]);
+            StreamID = frame.StreamID;
             string ct;
             if (dat != null && dat.Length > 0)
             {
-                this.rawdata = dat;
+                rawdata = dat;
                 if (!Headers.TryGetValue("Content-Type", out ct))
                 {
                     body_handler = new HttpBufferedBodyHandler();
@@ -54,7 +66,7 @@ namespace Manos.Spdy
 
                     if (ct.StartsWith("multipart/form-data", StringComparison.InvariantCultureIgnoreCase))
                     {
-                        string boundary = HttpRequest.ParseBoundary(ct);
+                        string boundary = HttpEntity.ParseBoundary(ct);
                         IUploadedFileCreator file_creator = GetFileCreator();
                         body_handler = new HttpMultiPartFormDataHandler(boundary, ContentEncoding, file_creator);
                     }
@@ -62,10 +74,14 @@ namespace Manos.Spdy
                 if (body_handler == null)
                     body_handler = new HttpBufferedBodyHandler();
                 context.CreateTimerWatcher(new TimeSpan(1), () =>
-                {
-                    body_handler.HandleData(this, new ByteBuffer(rawdata, 0, rawdata.Length), 0, rawdata.Length);
-                    body_handler.Finish(this);
-                }).Start();
+                                                                {
+                                                                    body_handler.HandleData(this,
+                                                                                            new ByteBuffer(rawdata, 0,
+                                                                                                           rawdata.
+                                                                                                               Length),
+                                                                                            0, rawdata.Length);
+                                                                    body_handler.Finish(this);
+                                                                }).Start();
             }
         }
 
@@ -76,12 +92,12 @@ namespace Manos.Spdy
             onClose();
         }
 
-        public void SetWwwFormData(Manos.Collections.DataDictionary data)
+        public void SetWwwFormData(DataDictionary data)
         {
             PostData = data;
         }
 
-        public void WriteMetadata(System.Text.StringBuilder builder)
+        public void WriteMetadata(StringBuilder builder)
         {
             throw new NotImplementedException("WriteMetadata");
         }
@@ -141,27 +157,26 @@ namespace Manos.Spdy
 
             return HttpCookie.FromHeader(cookie_header);
         }
+
         public override void WriteToBody(byte[] data, int position, int length)
         {
             throw new NotImplementedException();
         }
 
+        #endregion
 
+        public int StreamID { get; set; }
+
+        #region IHttpRequest Members
+
+        public new ITcpSocket Socket
+        {
+            get { throw new NotImplementedException(); }
+        }
 
         #endregion
 
-        Dictionary<string, HttpMethod> lookup = new Dictionary<string, HttpMethod>() {
-      { "OPTIONS", HttpMethod.HTTP_OPTIONS },
-      { "GET", HttpMethod.HTTP_GET },
-      { "HEAD", HttpMethod.HTTP_HEAD },
-      { "POST", HttpMethod.HTTP_POST },
-      { "PUT", HttpMethod.HTTP_PUT },
-      { "DELETE", HttpMethod.HTTP_DELETE },
-      { "TRACE", HttpMethod.HTTP_TRACE },
-      { "CONNECT", HttpMethod.HTTP_CONNECT }
-    };
-
-        HttpMethod MethodFromString(string str)
+        private HttpMethod MethodFromString(string str)
         {
             str = str.ToUpper();
             if (lookup.ContainsKey(str))
@@ -173,12 +188,5 @@ namespace Manos.Spdy
                 return HttpMethod.ERROR;
             }
         }
-
-
-        public new ITcpSocket Socket
-        {
-            get { throw new NotImplementedException(); }
-        }
     }
 }
-

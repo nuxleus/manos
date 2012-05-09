@@ -25,69 +25,74 @@
 
 
 using System;
+using System.Collections.Generic;
 using System.Linq;
 using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-
-using Manos;
 
 namespace Manos.Tool
 {
-	public class Loader
-	{
-		public static T LoadLibrary<T> (string library, IList<string> arguments)
-		{
-			T app = default(T);
-			Assembly a = Assembly.LoadFrom (library);
-			
-			foreach (Type t in a.GetTypes ()) {
-				if (typeof(T).IsAssignableFrom(t)) {
-					app = CreateAppInstance<T> (t, arguments);
-				}
-			}
+    public class Loader
+    {
+        public static T LoadLibrary<T>(string library, IList<string> arguments)
+        {
+            T app = default(T);
+            Assembly a = Assembly.LoadFrom(library);
 
-			return app;
-		}
-		
-		public static T CreateAppInstance<T> (Type t, IList<string> arguments)
-		{
-			int arg_count = arguments.Count;
-			ConstructorInfo [] constructors = t.GetConstructors ();
-			
-			foreach (ConstructorInfo ci in constructors.Where (c => c.GetParameters ().Count () == arg_count)) {
-				object [] args = ArgsForParams (ci.GetParameters (), arguments);
-				if (args == null)
-					continue;
-				try {
-					return (T) Activator.CreateInstance (t, args);
-				} catch (Exception e) {
-					Console.Error.WriteLine ("Exception creating App Type: '{0}'.", t);
-					Console.Error.WriteLine (e);
-				}
-			}
-			
-			return default(T);
-		}
-		
-		public static object [] ArgsForParams (ParameterInfo [] prms, IList<string> arguments)
-		{
-			object [] res = new object [prms.Length];
-			
-			for (int i = 0; i < prms.Count (); i++) {
-				try {
-					res [i] = Convert.ChangeType (arguments [i], prms [i].ParameterType);
-				} catch (Exception e) {
-					Console.Error.WriteLine ("Exception converting type: '{0}'.", prms [i].ParameterType);
-					Console.Error.WriteLine (e);
-					
-					return null;
-				}
-			}
-			
-			return res;
-		}
+            foreach (Type t in a.GetTypes())
+            {
+                if (typeof (T).IsAssignableFrom(t))
+                {
+                    app = CreateAppInstance<T>(t, arguments);
+                }
+            }
 
-	}
+            return app;
+        }
+
+        public static T CreateAppInstance<T>(Type t, IList<string> arguments)
+        {
+            int arg_count = arguments.Count;
+            ConstructorInfo[] constructors = t.GetConstructors();
+
+            foreach (ConstructorInfo ci in constructors.Where(c => c.GetParameters().Count() == arg_count))
+            {
+                object[] args = ArgsForParams(ci.GetParameters(), arguments);
+                if (args == null)
+                    continue;
+                try
+                {
+                    return (T) Activator.CreateInstance(t, args);
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine("Exception creating App Type: '{0}'.", t);
+                    Console.Error.WriteLine(e);
+                }
+            }
+
+            return default(T);
+        }
+
+        public static object[] ArgsForParams(ParameterInfo[] prms, IList<string> arguments)
+        {
+            var res = new object[prms.Length];
+
+            for (int i = 0; i < prms.Count(); i++)
+            {
+                try
+                {
+                    res[i] = Convert.ChangeType(arguments[i], prms[i].ParameterType);
+                }
+                catch (Exception e)
+                {
+                    Console.Error.WriteLine("Exception converting type: '{0}'.", prms[i].ParameterType);
+                    Console.Error.WriteLine(e);
+
+                    return null;
+                }
+            }
+
+            return res;
+        }
+    }
 }
-

@@ -24,26 +24,20 @@
 
 
 using System;
-using System.IO;
-using System.Collections;
 using System.Collections.Generic;
-
-using Manos;
+using System.IO;
 using Manos.Http;
-using MarkdownSharp;
 using Manos.Routing;
-
+using MarkdownSharp;
 
 namespace Manos.Tool
 {
-
     public class DocsModule : ManosApp
     {
+        private readonly string docs_dir;
 
-        private string docs_dir;
-
-        private Dictionary<string, string> manuals;
-        private Dictionary<string, string> tutorial_pages;
+        private readonly Dictionary<string, string> manuals;
+        private readonly Dictionary<string, string> tutorial_pages;
 
         public DocsModule(string docs_dir)
         {
@@ -109,7 +103,7 @@ namespace Manos.Tool
 
             string markdown = File.ReadAllText(page);
 
-            Markdown md_processor = new Markdown();
+            var md_processor = new Markdown();
             string html = md_processor.Transform(markdown);
 
             WritePage(response, html);
@@ -117,7 +111,8 @@ namespace Manos.Tool
 
         private void WritePage(IHttpResponse response, string body)
         {
-            response.Write(@"<html>
+            response.Write(
+                @"<html>
 					   <head>	
 					    <meta http-equiv=""Content-Type"" content=""text/html; charset=iso-8859-1"">
 					    <title>Manos Documentation Browser</title>

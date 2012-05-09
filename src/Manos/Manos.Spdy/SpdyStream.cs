@@ -1,24 +1,24 @@
 using System;
-using Manos.IO;
 using System.IO;
+using Manos.IO;
 
 namespace Manos.Spdy
 {
     public class SpdyStream
     {
-        private ITcpSocket Socket;
-        private DeflatingZlibContext Deflate;
+        private readonly DeflatingZlibContext Deflate;
+        private readonly ITcpSocket Socket;
+
+        public SpdyStream(ITcpSocket socket, DeflatingZlibContext deflate)
+        {
+            Socket = socket;
+            Deflate = deflate;
+            ReplyWritten = false;
+        }
 
         public bool ReplyWritten { get; set; }
 
         public int StreamID { get; set; }
-
-        public SpdyStream(ITcpSocket socket, DeflatingZlibContext deflate)
-        {
-            this.Socket = socket;
-            this.Deflate = deflate;
-            ReplyWritten = false;
-        }
 
         public void SendFile(string filename)
         {
@@ -30,34 +30,34 @@ namespace Manos.Spdy
             //		this.Socket.GetSocketStream ().Write (header.SerializeHeader ());
             //		((ISendfileCapable) this.Socket.GetSocketStream ()).SendFile (filename);
             //	} else {
-            var str = Socket.Context.OpenFile(filename, OpenMode.Read, 64 * 1024);
+            IByteStream str = Socket.Context.OpenFile(filename, OpenMode.Read, 64*1024);
             str.Read((buf) =>
-            {
-                DataFrame d = new DataFrame();
-                d.Flags = 0x00;
-                d.StreamID = this.StreamID;
-                d.Length = buf.Length - buf.Position;
-                d.Data = new byte[d.Length];
-                Array.Copy(buf.Bytes, buf.Position, d.Data, 0, d.Length);
-                var ret = d.Serialize();
-                this.Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
-            }, (e) => { }, () =>
-            {
-                DataFrame d = new DataFrame();
-                d.Flags = 0x01;
-                d.StreamID = this.StreamID;
-                d.Length = 0;
-                d.Data = new byte[d.Length];
-                var ret = d.Serialize();
-                this.Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
-            });
+                         {
+                             var d = new DataFrame();
+                             d.Flags = 0x00;
+                             d.StreamID = StreamID;
+                             d.Length = buf.Length - buf.Position;
+                             d.Data = new byte[d.Length];
+                             Array.Copy(buf.Bytes, buf.Position, d.Data, 0, d.Length);
+                             byte[] ret = d.Serialize();
+                             Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
+                         }, (e) => { }, () =>
+                                            {
+                                                var d = new DataFrame();
+                                                d.Flags = 0x01;
+                                                d.StreamID = StreamID;
+                                                d.Length = 0;
+                                                d.Data = new byte[d.Length];
+                                                byte[] ret = d.Serialize();
+                                                Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
+                                            });
             //	}
         }
 
         public void WriteReply(SpdyResponse res, bool done = false)
         {
-            SynReplyFrame rep = new SynReplyFrame();
-            this.StreamID = rep.StreamID = res.Request.StreamID;
+            var rep = new SynReplyFrame();
+            StreamID = rep.StreamID = res.Request.StreamID;
             rep.Version = 2;
             if (done)
                 rep.Flags = 0x01;
@@ -66,11 +66,11 @@ namespace Manos.Spdy
             rep.Headers = new NameValueHeaderBlock();
             rep.Headers["version"] = "HTTP/" + res.Request.MajorVersion + "." + res.Request.MinorVersion;
             rep.Headers["status"] = res.StatusCode.ToString();
-            foreach (var header in res.Headers.Keys)
+            foreach (string header in res.Headers.Keys)
             {
                 rep.Headers[header] = res.Headers[header];
             }
-            this.Socket.GetSocketStream().Write(rep.Serialize(this.Deflate));
+            Socket.GetSocketStream().Write(rep.Serialize(Deflate));
             ReplyWritten = true;
         }
 
@@ -81,26 +81,25 @@ namespace Manos.Spdy
 
         public void Write(byte[] data, int offset, int length)
         {
-            DataFrame d = new DataFrame();
+            var d = new DataFrame();
             d.Flags = 0x00;
-            d.StreamID = this.StreamID;
+            d.StreamID = StreamID;
             d.Length = length - offset;
             d.Data = new byte[d.Length];
             Array.Copy(data, offset, d.Data, 0, length);
-            var ret = d.Serialize();
-            this.Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
+            byte[] ret = d.Serialize();
+            Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
         }
 
         public void End()
         {
-            DataFrame d = new DataFrame();
+            var d = new DataFrame();
             d.Flags = 0x01;
-            d.StreamID = this.StreamID;
+            d.StreamID = StreamID;
             d.Length = 0;
             d.Data = new byte[0];
-            var ret = d.Serialize();
-            this.Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
+            byte[] ret = d.Serialize();
+            Socket.GetSocketStream().Write(new ByteBuffer(ret, 0, ret.Length));
         }
     }
 }
-

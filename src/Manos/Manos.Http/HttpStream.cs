@@ -21,292 +21,310 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //
+
 using System;
+using System.Collections.Generic;
 using System.IO;
 using System.Text;
-using System.Linq;
-using System.Collections;
-using System.Collections.Generic;
-
 using Manos.IO;
-using Manos.Collections;
-using Mono.Unix.Native;
 
 namespace Manos.Http
 {
-	public class HttpStream : System.IO.Stream, IDisposable
-	{
-		private long length;
-		private bool chunk_encode = true;
-		private bool metadata_written;
-		private bool final_chunk_sent;
-		private Queue<object> write_ops;
+    public class HttpStream : Stream, IDisposable
+    {
+        private bool chunk_encode = true;
+        private bool final_chunk_sent;
+        private long length;
+        private bool metadata_written;
+        private Queue<object> write_ops;
 
-		public HttpStream (HttpEntity entity, Manos.IO.IByteStream stream)
-		{
-			HttpEntity = entity;
-			SocketStream = stream;
-			AddHeaders = true;
-		}
+        public HttpStream(HttpEntity entity, IByteStream stream)
+        {
+            HttpEntity = entity;
+            SocketStream = stream;
+            AddHeaders = true;
+        }
 
-		public HttpEntity HttpEntity {
-			get;
-			private set;
-		}
+        public HttpEntity HttpEntity { get; private set; }
 
-		public Manos.IO.IByteStream SocketStream {
-			get;
-			private set;
-		}
+        public IByteStream SocketStream { get; private set; }
 
-		public bool Chunked {
-			get { return chunk_encode; }
-			set {
-				if (length > 0 && chunk_encode != value)
-					throw new InvalidOperationException ("Chunked can not be changed after a write has been performed.");
-				chunk_encode = value;
-			}
-		}
+        public bool Chunked
+        {
+            get { return chunk_encode; }
+            set
+            {
+                if (length > 0 && chunk_encode != value)
+                    throw new InvalidOperationException("Chunked can not be changed after a write has been performed.");
+                chunk_encode = value;
+            }
+        }
 
-		public bool AddHeaders {
-			get;
-			set;
-		}
+        public bool AddHeaders { get; set; }
 
-		public override bool CanRead {
-			get { return false; }
-		}
+        public override bool CanRead
+        {
+            get { return false; }
+        }
 
-		public override bool CanSeek {
-			get { return false; }
-		}
+        public override bool CanSeek
+        {
+            get { return false; }
+        }
 
-		public override bool CanWrite {
-			get { return true; }
-		}
+        public override bool CanWrite
+        {
+            get { return true; }
+        }
 
-		public override long Length {
-			get { return length; }
-		}
+        public override long Length
+        {
+            get { return length; }
+        }
 
-		public override long Position {
-			get { return length; }
-			set { Seek (value, SeekOrigin.Begin); }
-		}
+        public override long Position
+        {
+            get { return length; }
+            set { Seek(value, SeekOrigin.Begin); }
+        }
 
-		public override void Flush ()
-		{
-		}
+        public override void Flush()
+        {
+        }
 
-		public override int Read (byte[] buffer, int offset, int count)
-		{
-			throw new NotSupportedException ("Can not Read from an HttpStream.");
-		}
+        public override int Read(byte[] buffer, int offset, int count)
+        {
+            throw new NotSupportedException("Can not Read from an HttpStream.");
+        }
 
-		public override long Seek (long offset, SeekOrigin origin)
-		{
-			throw new NotSupportedException ("Can not seek on an HttpStream.");
-		}
+        public override long Seek(long offset, SeekOrigin origin)
+        {
+            throw new NotSupportedException("Can not seek on an HttpStream.");
+        }
 
-		public override void SetLength (long value)
-		{
-			throw new NotSupportedException ("Can not set the length of an HttpStream.");
-		}
+        public override void SetLength(long value)
+        {
+            throw new NotSupportedException("Can not set the length of an HttpStream.");
+        }
 
-		public override void Write (byte[] buffer, int offset, int count)
-		{
-			Write (buffer, offset, count, chunk_encode);
-		}
+        public override void Write(byte[] buffer, int offset, int count)
+        {
+            Write(buffer, offset, count, chunk_encode);
+        }
 
-		public void SendFile (string file_name)
-		{
-			EnsureMetadata ();
-			
-			var len = new FileInfo (file_name).Length;
-			length += len;
-			
-			QueueFile (file_name);
-		}
+        public void SendFile(string file_name)
+        {
+            EnsureMetadata();
 
-		IEnumerable<ByteBuffer> SendCallback (Action callback)
-		{
-			callback ();
-			yield break;
-		}
+            long len = new FileInfo(file_name).Length;
+            length += len;
 
-		void SendFileData (string fileName)
-		{
-			if (SocketStream is ISendfileCapable) {
-				((ISendfileCapable) SocketStream).SendFile (fileName);
-			} else {
-				SocketStream.PauseWriting ();
-				var fs = HttpEntity.Context.OpenFile (fileName, OpenMode.Read, 64 * 1024);
-				SocketStream.Write (new StreamCopySequencer (fs, SocketStream, true));
-			}
-			SocketStream.Write (SendCallback (SendBufferedOps));
-		}
+            QueueFile(file_name);
+        }
 
-		void SendFileImpl (string fileName)
-		{
-			var len = new FileInfo (fileName).Length;
-			if (chunk_encode) {
-				SendChunk (len, false);
-				SendFileData (fileName);
-				SendChunk (-1, false);
-			} else {
-				SendFileData (fileName);
-			}
-		}
+        private IEnumerable<ByteBuffer> SendCallback(Action callback)
+        {
+            callback();
+            yield break;
+        }
 
-		private void Write (byte [] buffer, int offset, int count, bool chunked)
-		{
-			EnsureMetadata ();
+        private void SendFileData(string fileName)
+        {
+            if (SocketStream is ISendfileCapable)
+            {
+                ((ISendfileCapable) SocketStream).SendFile(fileName);
+            }
+            else
+            {
+                SocketStream.PauseWriting();
+                IByteStream fs = HttpEntity.Context.OpenFile(fileName, OpenMode.Read, 64*1024);
+                SocketStream.Write(new StreamCopySequencer(fs, SocketStream, true));
+            }
+            SocketStream.Write(SendCallback(SendBufferedOps));
+        }
 
-			if (chunked)
-				SendChunk (count, false);
+        private void SendFileImpl(string fileName)
+        {
+            long len = new FileInfo(fileName).Length;
+            if (chunk_encode)
+            {
+                SendChunk(len, false);
+                SendFileData(fileName);
+                SendChunk(-1, false);
+            }
+            else
+            {
+                SendFileData(fileName);
+            }
+        }
 
-			length += (count - offset);
-			
-			QueueBuffer (new ByteBuffer (buffer, offset, count));
-			
-			if (chunked)
-				SendChunk (-1, false);
-		}
+        private void Write(byte[] buffer, int offset, int count, bool chunked)
+        {
+            EnsureMetadata();
 
-		public void End ()
-		{
-			End (null);
-		}
+            if (chunked)
+                SendChunk(count, false);
 
-		public void End (Action callback)
-		{
-			if (chunk_encode) {
-				SendFinalChunk (callback);
-				return;
-			}
-			
-			if (callback != null) {
-				if (write_ops == null)
-					write_ops = new Queue<object> ();
-				write_ops.Enqueue (callback);
-			}
+            length += (count - offset);
 
-			WriteMetadata ();
-			SendBufferedOps ();
-		}
+            QueueBuffer(new ByteBuffer(buffer, offset, count));
 
-		public void SendFinalChunk (Action callback)
-		{
-			EnsureMetadata ();
+            if (chunked)
+                SendChunk(-1, false);
+        }
 
-			if (!chunk_encode || final_chunk_sent)
-				return;
+        public void End()
+        {
+            End(null);
+        }
 
-			final_chunk_sent = true;
+        public void End(Action callback)
+        {
+            if (chunk_encode)
+            {
+                SendFinalChunk(callback);
+                return;
+            }
 
-			SendChunk (0, true);
-			SocketStream.Write (SendCallback (callback));
-		}
+            if (callback != null)
+            {
+                if (write_ops == null)
+                    write_ops = new Queue<object>();
+                write_ops.Enqueue(callback);
+            }
 
-		public void SendBufferedOps ()
-		{
-			if (write_ops != null) {
-				while (write_ops.Count > 0) {
-					var op = write_ops.Dequeue ();
-					if (op is ByteBuffer) {
-						SocketStream.Write ((ByteBuffer) op);
-					} else if (op is string) {
-						SendFileImpl ((string) op);
-						return;
-					} else if (op is Action) {
-						SocketStream.Write (SendCallback ((Action) op));
-					} else {
-						throw new InvalidOperationException ();
-					}
-				}
-			}
-		}
+            WriteMetadata();
+            SendBufferedOps();
+        }
 
-		void WriteMetadata ()
-		{
-			if (AddHeaders) {
-				if (chunk_encode) {
-					HttpEntity.Headers.SetNormalizedHeader ("Transfer-Encoding", "chunked");
-				} else {
-					HttpEntity.Headers.ContentLength = Length;
-				}
-			}
-			
-			StringBuilder builder = new StringBuilder ();
-			HttpEntity.WriteMetadata (builder);
+        public void SendFinalChunk(Action callback)
+        {
+            EnsureMetadata();
 
-			byte [] data = Encoding.ASCII.GetBytes (builder.ToString ());
+            if (!chunk_encode || final_chunk_sent)
+                return;
 
-			metadata_written = true;
-			
-			SocketStream.Write (data);
-		}
+            final_chunk_sent = true;
 
-		void EnsureMetadata ()
-		{
-			if (!chunk_encode || metadata_written)
-				return;
+            SendChunk(0, true);
+            SocketStream.Write(SendCallback(callback));
+        }
 
-			WriteMetadata ();
-		}
+        public void SendBufferedOps()
+        {
+            if (write_ops != null)
+            {
+                while (write_ops.Count > 0)
+                {
+                    object op = write_ops.Dequeue();
+                    if (op is ByteBuffer)
+                    {
+                        SocketStream.Write((ByteBuffer) op);
+                    }
+                    else if (op is string)
+                    {
+                        SendFileImpl((string) op);
+                        return;
+                    }
+                    else if (op is Action)
+                    {
+                        SocketStream.Write(SendCallback((Action) op));
+                    }
+                    else
+                    {
+                        throw new InvalidOperationException();
+                    }
+                }
+            }
+        }
 
-		private void QueueBuffer (ByteBuffer buffer)
-		{
-			if (chunk_encode) {
-				SocketStream.Write (buffer);
-				return;
-			}
+        private void WriteMetadata()
+        {
+            if (AddHeaders)
+            {
+                if (chunk_encode)
+                {
+                    HttpEntity.Headers.SetNormalizedHeader("Transfer-Encoding", "chunked");
+                }
+                else
+                {
+                    HttpEntity.Headers.ContentLength = Length;
+                }
+            }
 
-			if (write_ops == null)
-				write_ops = new Queue<object> ();
+            var builder = new StringBuilder();
+            HttpEntity.WriteMetadata(builder);
 
-			write_ops.Enqueue (buffer);
-		}
+            byte[] data = Encoding.ASCII.GetBytes(builder.ToString());
 
-		private void QueueFile (string file)
-		{
-			if (chunk_encode) {
-				SendFileImpl (file);
-				return;
-			}
+            metadata_written = true;
 
-			if (write_ops == null)
-				write_ops = new Queue<object> ();
+            SocketStream.Write(data);
+        }
 
-			write_ops.Enqueue (file);
-		}
+        private void EnsureMetadata()
+        {
+            if (!chunk_encode || metadata_written)
+                return;
 
-		private void SendChunk (long l, bool last)
-		{
-			if (l == 0 && !last)
-				return;
+            WriteMetadata();
+        }
 
-			
-			int i = 0;
-			byte [] chunk_buffer = new byte [24];
+        private void QueueBuffer(ByteBuffer buffer)
+        {
+            if (chunk_encode)
+            {
+                SocketStream.Write(buffer);
+                return;
+            }
 
-			if (l >= 0) {
-				string s = l.ToString ("x");
-				for (; i < s.Length; i++)
-					chunk_buffer [i] = (byte) s [i];
-			}
+            if (write_ops == null)
+                write_ops = new Queue<object>();
 
-			chunk_buffer [i++] = 13;
-			chunk_buffer [i++] = 10;
-			if (last) {
-				chunk_buffer [i++] = 13;
-				chunk_buffer [i++] = 10;
-			}
+            write_ops.Enqueue(buffer);
+        }
 
-			length += i;
-			
-			QueueBuffer (new ByteBuffer (chunk_buffer, 0, i));
-		}
-	}
+        private void QueueFile(string file)
+        {
+            if (chunk_encode)
+            {
+                SendFileImpl(file);
+                return;
+            }
+
+            if (write_ops == null)
+                write_ops = new Queue<object>();
+
+            write_ops.Enqueue(file);
+        }
+
+        private void SendChunk(long l, bool last)
+        {
+            if (l == 0 && !last)
+                return;
+
+
+            int i = 0;
+            var chunk_buffer = new byte[24];
+
+            if (l >= 0)
+            {
+                string s = l.ToString("x");
+                for (; i < s.Length; i++)
+                    chunk_buffer[i] = (byte) s[i];
+            }
+
+            chunk_buffer[i++] = 13;
+            chunk_buffer[i++] = 10;
+            if (last)
+            {
+                chunk_buffer[i++] = 13;
+                chunk_buffer[i++] = 10;
+            }
+
+            length += i;
+
+            QueueBuffer(new ByteBuffer(chunk_buffer, 0, i));
+        }
+    }
 }
-

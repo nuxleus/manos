@@ -24,13 +24,11 @@
 
 
 using System;
-using System.IO;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Diagnostics;
-using Microsoft.CSharp;
 using System.CodeDom.Compiler;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using Microsoft.CSharp;
 
 namespace Manos.Tool
 {
@@ -38,20 +36,16 @@ namespace Manos.Tool
     {
         public static readonly string COMPILED_TEMPLATES = "Templates.dll";
 
-        private string[] sources;
-        private string[] ref_asm;
         private string output_name;
+        private string[] ref_asm;
+        private string[] sources;
 
         public BuildCommand(Environment env)
         {
             Environment = env;
         }
 
-        public Environment Environment
-        {
-            get;
-            private set;
-        }
+        public Environment Environment { get; private set; }
 
         public string[] Sources
         {
@@ -93,10 +87,7 @@ namespace Manos.Tool
                     ref_asm = CreateReferencesList();
                 return ref_asm;
             }
-            set
-            {
-                ref_asm = value;
-            }
+            set { ref_asm = value; }
         }
 
         public void Run()
@@ -143,11 +134,11 @@ namespace Manos.Tool
             var options = new CompilerParameters(ReferencedAssemblies, OutputAssembly, true);
 
 
-            var results = provider.CompileAssemblyFromFile(options, Sources);
+            CompilerResults results = provider.CompileAssemblyFromFile(options, Sources);
 
             if (results.Errors.Count > 0)
             {
-                foreach (var e in results.Errors)
+                foreach (object e in results.Errors)
                 {
                     Console.WriteLine(e);
                 }
@@ -156,7 +147,7 @@ namespace Manos.Tool
 
         private string[] CreateSourcesList()
         {
-            List<string> sources = new List<string>();
+            var sources = new List<string>();
 
             FindCSFilesRecurse(Environment.WorkingDirectory, sources);
 
@@ -204,14 +195,14 @@ namespace Manos.Tool
             //
             if (ManosConfig.Main != null)
             {
-                var strReferencedAssemblies = ManosConfig.GetExpanded("ReferencedAssemblies");
+                string strReferencedAssemblies = ManosConfig.GetExpanded("ReferencedAssemblies");
                 if (strReferencedAssemblies != null)
                 {
-                    var referencedAssemblies = strReferencedAssemblies.Split(' ', ',');
-                    foreach (var a in referencedAssemblies)
+                    string[] referencedAssemblies = strReferencedAssemblies.Split(' ', ',');
+                    foreach (string a in referencedAssemblies)
                     {
-                        string ManosFile = System.IO.Path.Combine(Environment.ManosDirectory, a);
-                        if (System.IO.File.Exists(ManosFile))
+                        string ManosFile = Path.Combine(Environment.ManosDirectory, a);
+                        if (File.Exists(ManosFile))
                         {
                             libs.Add(ManosFile);
                         }
@@ -219,7 +210,6 @@ namespace Manos.Tool
                         {
                             libs.Add(a);
                         }
-
                     }
                 }
             }

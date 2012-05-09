@@ -22,11 +22,10 @@
 //
 //
 
-using System;
-
-namespace Manos {
-	public interface IManosRun {
-		int Main(string [] args);
-	}
+namespace Manos
+{
+    public interface IManosRun
+    {
+        int Main(string[] args);
+    }
 }
-

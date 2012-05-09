@@ -23,66 +23,72 @@
 // 
 // 
 using System;
-using Manos.IO;
-using Libev;
-using System.Collections;
-using System.Collections.Generic;
 using System.Collections.Concurrent;
+using Manos.IO;
 
 namespace Manos.Threading
 {
-	public class Boundary : IBoundary
-	{
-		public static readonly Boundary Instance;
+    public class Boundary : IBoundary
+    {
+        public static readonly Boundary Instance;
 
-		static Boundary ()
-		{
-			Instance = new Boundary (AppHost.Context);
-		}
+        private readonly IAsyncWatcher asyncWatcher;
+        private readonly int maxWorkPerLoop;
+        private readonly ConcurrentQueue<Action> workQueue;
 
-		private readonly IAsyncWatcher asyncWatcher;
-		private readonly ConcurrentQueue<Action> workQueue;
-		private int maxWorkPerLoop;
+        static Boundary()
+        {
+            Instance = new Boundary(AppHost.Context);
+        }
 
-		public Boundary (Context context) : this (context, 18)
-		{
-		}
+        public Boundary(Context context) : this(context, 18)
+        {
+        }
 
-		public Boundary (Context context, int maxWorkPerLoop)
-		{
-			asyncWatcher = context.CreateAsyncWatcher (ProcessWork);
-			asyncWatcher.Start ();
-			
-			workQueue = new ConcurrentQueue<Action> ();
-			this.maxWorkPerLoop = maxWorkPerLoop;
-		}
+        public Boundary(Context context, int maxWorkPerLoop)
+        {
+            asyncWatcher = context.CreateAsyncWatcher(ProcessWork);
+            asyncWatcher.Start();
 
-		public void ExecuteOnTargetLoop (Action action)
-		{
-			workQueue.Enqueue (action);
-			
-			asyncWatcher.Send ();
-		}
+            workQueue = new ConcurrentQueue<Action>();
+            this.maxWorkPerLoop = maxWorkPerLoop;
+        }
 
-		private void ProcessWork ()
-		{
-			int remaining = maxWorkPerLoop + 1;
-			while (--remaining > 0) {
-				Action action;
-				if (workQueue.TryDequeue (out action)) {
-					try {
-						action ();
-					} catch (Exception ex) {
-						Console.WriteLine ("Error in processing synchronized action");
-						Console.WriteLine (ex);
-					}
-				} else
-					break;
-			}
+        #region IBoundary Members
 
-			if (remaining == 0)
-				asyncWatcher.Send ();
-		}
-	}
+        public void ExecuteOnTargetLoop(Action action)
+        {
+            workQueue.Enqueue(action);
+
+            asyncWatcher.Send();
+        }
+
+        #endregion
+
+        private void ProcessWork()
+        {
+            int remaining = maxWorkPerLoop + 1;
+            while (--remaining > 0)
+            {
+                Action action;
+                if (workQueue.TryDequeue(out action))
+                {
+                    try
+                    {
+                        action();
+                    }
+                    catch (Exception ex)
+                    {
+                        Console.WriteLine("Error in processing synchronized action");
+                        Console.WriteLine(ex);
+                    }
+                }
+                else
+                    break;
+            }
+
+            if (remaining == 0)
+                asyncWatcher.Send();
+        }
+    }
 }
-

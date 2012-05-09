@@ -23,65 +23,56 @@
 //
 
 
-using System;
-using System.IO;
-using System.Text;
+namespace Manos.Templates
+{
+    public class ITemplateCodegen
+    {
+        public void BeginPage(string name)
+        {
+        }
 
-using System.Linq;
-using System.Collections;
-using System.Collections.Generic;
+        public void EndPage()
+        {
+        }
 
-namespace Manos.Templates {
+        public void EmitExtends(string name)
+        {
+        }
 
-	  public class ITemplateCodegen {
+        public void AddData(string data)
+        {
+        }
 
-	  	 public void BeginPage (string name)
-		 {
-		 }
+        public void EmitSinglePrint(Expression expression)
+        {
+        }
 
-		 public void EndPage ()
-		 {
-		 }
-		 
-		 public void EmitExtends (string name)
-		 {
-		 }
+        public void EmitIf(Expression expression)
+        {
+        }
 
-		 public void AddData (string data)
-		 {
-		 }
+        public void EmitElse(Expression expression)
+        {
+        }
 
-		 public void EmitSinglePrint (Expression expression)
-		 {
-		 }
+        public void EmitEndIf()
+        {
+        }
 
-		 public void EmitIf (Expression expression)
-		 {
-		 }
+        public void BeginBlock(string name)
+        {
+        }
 
-		 public void EmitElse (Expression expression)
-		 {
-		 }
+        public void EndBlock(string name)
+        {
+        }
 
-		 public void EmitEndIf ()
-		 {
-		 }
+        public void BeginForeachLoop(string var, Expression expression)
+        {
+        }
 
-		 public void BeginBlock (string name)
-		 {
-		 }
-
-		 public void EndBlock (string name)
-		 {
-		 }
-
-		 public void BeginForeachLoop (string var, Expression expression)
-		 {
-		 }
-
-		 public void EndForeachLoop ()
-		 {
-		 }
-	  }
+        public void EndForeachLoop()
+        {
+        }
+    }
 }
-

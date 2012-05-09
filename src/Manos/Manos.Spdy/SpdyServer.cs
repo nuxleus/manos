@@ -1,17 +1,7 @@
 using System;
-using System.IO;
-using System.Text;
-using System.Net;
-using System.Linq;
 using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-
-using Libev;
-
-using Manos.IO;
-using Manos.IO.Managed;
 using Manos.Http;
+using Manos.IO;
 
 namespace Manos.Spdy
 {
@@ -20,34 +10,28 @@ namespace Manos.Spdy
     public class SpdyServer : IDisposable
     {
         public static readonly string ServerVersion;
-        private SpdyConnectionCallback callback;
-        ITcpServerSocket socket;
+        private readonly SpdyConnectionCallback callback;
         private bool closeOnEnd;
+        private ITcpServerSocket socket;
 
         static SpdyServer()
         {
             Version v = Assembly.GetExecutingAssembly().GetName().Version;
-            ServerVersion = "Manos/SPDY/" + v.ToString();
+            ServerVersion = "Manos/SPDY/" + v;
         }
 
-        public SpdyServer(Context context, SpdyConnectionCallback callback, ITcpServerSocket socket, bool closeOnEnd = false)
+        public SpdyServer(Context context, SpdyConnectionCallback callback, ITcpServerSocket socket,
+                          bool closeOnEnd = false)
         {
             this.callback = callback;
             this.socket = socket;
             this.closeOnEnd = closeOnEnd;
-            this.Context = context;
+            Context = context;
         }
 
-        public Context Context
-        {
-            get;
-            private set;
-        }
+        public Context Context { get; private set; }
 
-        public void Listen(string host, int port)
-        {
-            socket.Listen(port, ConnectionAccepted);
-        }
+        #region IDisposable Members
 
         public void Dispose()
         {
@@ -56,6 +40,13 @@ namespace Manos.Spdy
                 socket.Dispose();
                 socket = null;
             }
+        }
+
+        #endregion
+
+        public void Listen(string host, int port)
+        {
+            socket.Listen(port, ConnectionAccepted);
         }
 
         private void ConnectionAccepted(ITcpSocket socket)

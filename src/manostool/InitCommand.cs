@@ -35,8 +35,8 @@ namespace Manos.Tool
         public static readonly string TEMPLATES_DIRECTORY = "Templates";
         public static readonly string DEPLOYMENT_DIRECTORY = "Deployment";
 
-        private string layout;
         private string dest_dir;
+        private string layout;
 
         public InitCommand(Environment env, string name)
         {
@@ -51,32 +51,18 @@ namespace Manos.Tool
             ApplicationName = name;
         }
 
-        public Environment Environment
-        {
-            get;
-            private set;
-        }
+        public Environment Environment { get; private set; }
 
-        public string ApplicationName
-        {
-            get;
-            private set;
-        }
+        public string ApplicationName { get; private set; }
 
         public string LayoutsDirectory
         {
-            get
-            {
-                return Path.Combine(Environment.DataDirectory, "layouts");
-            }
+            get { return Path.Combine(Environment.DataDirectory, "layouts"); }
         }
 
         public string LayoutDirectory
         {
-            get
-            {
-                return Path.Combine(LayoutsDirectory, Layout);
-            }
+            get { return Path.Combine(LayoutsDirectory, Layout); }
         }
 
         public string Layout
@@ -132,7 +118,6 @@ namespace Manos.Tool
 
         public void CopyFilesRecurse(DirectoryInfo source, DirectoryInfo target)
         {
-
             foreach (DirectoryInfo dir in source.GetDirectories())
                 CopyFilesRecurse(dir, target.CreateSubdirectory(dir.Name));
 
@@ -141,7 +126,8 @@ namespace Manos.Tool
                 string dest = Path.Combine(target.FullName, file.Name);
                 file.CopyTo(dest);
 
-                if (file.Extension == ".cs" || file.Extension == ".cshtml" || file.Extension == ".sln" || file.Extension == ".csproj" || file.Extension == ".user")
+                if (file.Extension == ".cs" || file.Extension == ".cshtml" || file.Extension == ".sln" ||
+                    file.Extension == ".csproj" || file.Extension == ".user")
                     ConvertCSFile(dest);
 
                 ConvertFileName(dest);
@@ -168,7 +154,7 @@ namespace Manos.Tool
         private string Convert(string src)
         {
             src = src.Replace("$APPNAME", ApplicationName);
-            src = src.Replace("$MANOSDIR", System.IO.Path.GetDirectoryName(GetType().Assembly.Location));
+            src = src.Replace("$MANOSDIR", Path.GetDirectoryName(GetType().Assembly.Location));
             return src;
         }
 

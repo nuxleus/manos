@@ -24,36 +24,37 @@
 
 
 using System;
-using System.Collections.Specialized;
 using Manos.Collections;
 
 namespace Manos.Routing
 {
+    public class StringMatchOperation : IMatchOperation
+    {
+        private string str;
 
+        public StringMatchOperation(string str)
+        {
+            String = str;
+        }
 
-	public class StringMatchOperation : IMatchOperation
-	{
-		private string str;
-		
-		public StringMatchOperation (string str)
-		{
-			String = str;
-		}
-		
-		public string String {
-			get { return str; }
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("value");
-				if (value.Length == 0)
-					throw new ArgumentException ("StringMatch operations should not use empty strings.");
-				str = value.ToLower();
-			}
-		}
-	
-		public bool IsMatch (string input, int start, out DataDictionary data, out int end)
-		{
-			/*if (!StartsWith (input, start, String)) {
+        public string String
+        {
+            get { return str; }
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException("value");
+                if (value.Length == 0)
+                    throw new ArgumentException("StringMatch operations should not use empty strings.");
+                str = value.ToLower();
+            }
+        }
+
+        #region IMatchOperation Members
+
+        public bool IsMatch(string input, int start, out DataDictionary data, out int end)
+        {
+            /*if (!StartsWith (input, start, String)) {
 				
 				// some special processing - ugh
 				// route to '/' when the parent app has Route("/test", new SubModule)
@@ -67,28 +68,32 @@ namespace Manos.Routing
 					end = start;
 					return false;
 				}*/
-			return IsMatchInternal (String, input, start, out data, out end);
-		}
+            return IsMatchInternal(String, input, start, out data, out end);
+        }
 
-		internal static bool IsMatchInternal (string the_string, string input, int start, out DataDictionary data, out int end)
-		{
-			if (!StartsWith (input, start, the_string)) {
-				data = null;
-				end = start;
-				return false;
-			}
+        #endregion
 
-			data = null;
-			end = start + the_string.Length;
-			return true;
-		}
+        internal static bool IsMatchInternal(string the_string, string input, int start, out DataDictionary data,
+                                             out int end)
+        {
+            if (!StartsWith(input, start, the_string))
+            {
+                data = null;
+                end = start;
+                return false;
+            }
 
-		public static bool StartsWith (string input, int start, string str)
-		{
-			if (input.Length < str.Length + start)
-				return false;
-				
-			return String.Compare (input, start, str, 0, str.Length, StringComparison.OrdinalIgnoreCase) == 0;
-		}
-  }
+            data = null;
+            end = start + the_string.Length;
+            return true;
+        }
+
+        public static bool StartsWith(string input, int start, string str)
+        {
+            if (input.Length < str.Length + start)
+                return false;
+
+            return String.Compare(input, start, str, 0, str.Length, StringComparison.OrdinalIgnoreCase) == 0;
+        }
+    }
 }

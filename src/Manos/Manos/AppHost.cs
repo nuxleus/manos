@@ -21,21 +21,15 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //
+
 using System;
-using System.Collections;
-using System.Collections.Concurrent;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
-using Manos.IO;
-using Manos.IO.Managed;
-using Manos.Http;
-using Manos.Spdy;
 using Manos.Caching;
+using Manos.Http;
+using Manos.IO;
 using Manos.Logging;
-
-using Libev;
-using Manos.Threading;
+using Manos.Spdy;
 
 namespace Manos
 {
@@ -46,18 +40,21 @@ namespace Manos
     {
         private static ManosApp app;
         private static bool started;
-        private static List<IPEndPoint> listenEndPoints = new List<IPEndPoint>();
-        private static List<IPEndPoint> spdylistenEndPoints = new List<IPEndPoint>();
-        private static Dictionary<IPEndPoint, Tuple<string, string>> secureListenEndPoints =
-          new Dictionary<IPEndPoint, Tuple<string, string>>();
-        private static Dictionary<IPEndPoint, Tuple<string, string>> spdysecureListenEndPoints =
-          new Dictionary<IPEndPoint, Tuple<string, string>>();
-        private static List<HttpServer> servers = new List<HttpServer>();
-        private static List<SpdyServer> spdyservers = new List<SpdyServer>();
+        private static readonly List<IPEndPoint> listenEndPoints = new List<IPEndPoint>();
+        private static readonly List<IPEndPoint> spdylistenEndPoints = new List<IPEndPoint>();
+
+        private static readonly Dictionary<IPEndPoint, Tuple<string, string>> secureListenEndPoints =
+            new Dictionary<IPEndPoint, Tuple<string, string>>();
+
+        private static readonly Dictionary<IPEndPoint, Tuple<string, string>> spdysecureListenEndPoints =
+            new Dictionary<IPEndPoint, Tuple<string, string>>();
+
+        private static readonly List<HttpServer> servers = new List<HttpServer>();
+        private static readonly List<SpdyServer> spdyservers = new List<SpdyServer>();
         private static IManosCache cache;
         private static IManosLogger log;
         private static List<IManosPipe> pipes;
-        private static Context context;
+        private static readonly Context context;
 
         static AppHost()
         {
@@ -84,7 +81,7 @@ namespace Manos
             get
             {
                 if (log == null)
-                    log = new Manos.Logging.ManosConsoleLogger("manos", LogLevel.Debug);
+                    log = new ManosConsoleLogger("manos", LogLevel.Debug);
                 return log;
             }
         }
@@ -101,10 +98,7 @@ namespace Manos
 
         public static ICollection<IPEndPoint> ListenEndPoints
         {
-            get
-            {
-                return listenEndPoints.AsReadOnly();
-            }
+            get { return listenEndPoints.AsReadOnly(); }
         }
 
         public static void ListenAt(IPEndPoint endPoint)
@@ -131,8 +125,9 @@ namespace Manos
                 throw new InvalidOperationException("Endpoint already registered");
 
             secureListenEndPoints.Add(endPoint,
-              Tuple.Create(cert, key));
+                                      Tuple.Create(cert, key));
         }
+
         public static void SpdyListenAt(IPEndPoint endPoint)
         {
             if (endPoint == null)
@@ -157,7 +152,7 @@ namespace Manos
                 throw new InvalidOperationException("Endpoint already registered");
 
             spdysecureListenEndPoints.Add(endPoint,
-              Tuple.Create(cert, key));
+                                          Tuple.Create(cert, key));
         }
 
         public static void InitializeTLS(string priorities)
@@ -195,14 +190,14 @@ namespace Manos
 
             started = true;
 
-            foreach (var ep in listenEndPoints)
+            foreach (IPEndPoint ep in listenEndPoints)
             {
                 var server = new HttpServer(Context, HandleTransaction, Context.CreateTcpServerSocket(ep.AddressFamily));
                 server.Listen(ep.Address.ToString(), ep.Port);
 
                 servers.Add(server);
             }
-            foreach (var ep in secureListenEndPoints.Keys)
+            foreach (IPEndPoint ep in secureListenEndPoints.Keys)
             {
                 //				var keypair = secureListenEndPoints [ep];
                 //				var socket = Context.CreateSecureSocket (keypair.Item1, keypair.Item2);
@@ -211,18 +206,17 @@ namespace Manos
                 //				
                 //				servers.Add (server);
             }
-            foreach (var ep in spdylistenEndPoints)
+            foreach (IPEndPoint ep in spdylistenEndPoints)
             {
-
                 var server = new SpdyServer(Context, HandleTransaction, Context.CreateTcpServerSocket(ep.AddressFamily));
                 server.Listen(ep.Address.ToString(), ep.Port);
 
                 spdyservers.Add(server);
             }
-            foreach (var ep in spdysecureListenEndPoints.Keys)
+            foreach (IPEndPoint ep in spdysecureListenEndPoints.Keys)
             {
-                var keypair = spdysecureListenEndPoints[ep];
-                var socket = Context.CreateSecureSocket(keypair.Item1, keypair.Item2);
+                Tuple<string, string> keypair = spdysecureListenEndPoints[ep];
+                ITcpSocket socket = Context.CreateSecureSocket(keypair.Item1, keypair.Item2);
                 var server = new SpdyServer(context, HandleTransaction, Context.CreateTcpServerSocket(ep.AddressFamily));
                 server.Listen(ep.Address.ToString(), ep.Port);
 
@@ -249,25 +243,27 @@ namespace Manos
             pipes.Add(pipe);
         }
 
-        public static Timeout AddTimeout(TimeSpan timespan, IRepeatBehavior repeat, object data, TimeoutCallback callback)
+        public static Timeout AddTimeout(TimeSpan timespan, IRepeatBehavior repeat, object data,
+                                         TimeoutCallback callback)
         {
             return AddTimeout(timespan, timespan, repeat, data, callback);
         }
 
-        public static Timeout AddTimeout(TimeSpan begin, TimeSpan timespan, IRepeatBehavior repeat, object data, TimeoutCallback callback)
+        public static Timeout AddTimeout(TimeSpan begin, TimeSpan timespan, IRepeatBehavior repeat, object data,
+                                         TimeoutCallback callback)
         {
-            Timeout t = new Timeout(begin, timespan, repeat, data, callback);
+            var t = new Timeout(begin, timespan, repeat, data, callback);
 
             ITimerWatcher timer = null;
             timer = context.CreateTimerWatcher(begin, timespan, delegate
-            {
-                t.Run(app);
-                if (!t.ShouldContinueToRepeat())
-                {
-                    t.Stop();
-                    timer.Dispose();
-                }
-            });
+                                                                    {
+                                                                        t.Run(app);
+                                                                        if (!t.ShouldContinueToRepeat())
+                                                                        {
+                                                                            t.Stop();
+                                                                            timer.Dispose();
+                                                                        }
+                                                                    });
 
             timer.Start();
 
@@ -275,4 +271,3 @@ namespace Manos
         }
     }
 }
-

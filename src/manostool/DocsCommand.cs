@@ -24,32 +24,20 @@
 
 
 using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-
-using Manos;
-using Manos.Http;
-
+using Manos.IO;
 
 namespace Manos.Tool
 {
     public class DocsCommand
     {
-        int? port;
+        private int? port;
 
         public DocsCommand(Environment env)
         {
             Environment = env;
         }
 
-        public Environment Environment
-        {
-            get;
-            private set;
-        }
+        public Environment Environment { get; private set; }
 
         public int Port
         {
@@ -57,7 +45,7 @@ namespace Manos.Tool
             {
                 if (port == null)
                     return 8181;
-                return (int)port;
+                return (int) port;
             }
             set
             {
@@ -69,10 +57,10 @@ namespace Manos.Tool
 
         public void Run()
         {
-            DocsModule docs = new DocsModule(Environment.DocsDirectory);
+            var docs = new DocsModule(Environment.DocsDirectory);
             Console.WriteLine("Go to http://localhost:{0}/ to see your docs.", Port);
 
-            AppHost.ListenAt(new Manos.IO.IPEndPoint(Manos.IO.IPAddress.Any, Port));
+            AppHost.ListenAt(new IPEndPoint(IPAddress.Any, Port));
             AppHost.Start(docs);
         }
     }
