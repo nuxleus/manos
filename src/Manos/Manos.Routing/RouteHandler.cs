@@ -23,57 +23,43 @@
 //
 
 
-
 using System;
-using System.Linq;
 using System.Collections;
 using System.Collections.Generic;
-using System.Collections.ObjectModel;
-using System.Text.RegularExpressions;
-using System.Collections.Specialized;
-
-using Manos.Http;
+using System.Linq;
+using C5;
 using Manos.Collections;
+using Manos.Http;
 
 namespace Manos.Routing
 {
-
     public class RouteHandler : IEnumerable<RouteHandler>
     {
-
-        private List<HttpMethod> methods;
-
         private IMatchOperation[] match_ops;
+        private List<HttpMethod> methods;
 
         public RouteHandler()
         {
             SetupChildrenCollection();
         }
 
-        void HandleChildrenCollectionChanged(object sender, EventArgs e)
-        {
-            if (Target != null)
-                throw new InvalidOperationException("Can not add Children to a RouteHandler that has a Target set.");
-        }
-
         public RouteHandler(IMatchOperation op, HttpMethod[] methods)
-
-            : this(new IMatchOperation[] { op }, methods)
+            : this(new[] {op}, methods)
         {
         }
 
         public RouteHandler(IMatchOperation op, HttpMethod[] methods, IManosTarget target)
-            : this(new IMatchOperation[] { op }, methods, target)
+            : this(new[] {op}, methods, target)
         {
         }
 
         public RouteHandler(IMatchOperation op, HttpMethod method)
-            : this(new IMatchOperation[] { op }, new HttpMethod[] { method })
+            : this(new[] {op}, new[] {method})
         {
         }
 
         public RouteHandler(IMatchOperation op, HttpMethod method, IManosTarget target)
-            : this(new IMatchOperation[] { op }, new HttpMethod[] { method }, target)
+            : this(new[] {op}, new[] {method}, target)
         {
         }
 
@@ -92,22 +78,7 @@ namespace Manos.Routing
             SetupChildrenCollection();
         }
 
-        private void SetupChildrenCollection()
-        {
-            var children = new C5.ArrayList<RouteHandler>();
-
-            children.ItemInserted += HandleChildrenCollectionChanged;
-            children.ItemsAdded += HandleChildrenCollectionChanged;
-            children.ItemRemovedAt += HandleChildrenCollectionChanged;
-            children.ItemsRemoved += HandleChildrenCollectionChanged;
-            Children = children;
-        }
-
-        public bool IsImplicit
-        {
-            get;
-            internal set;
-        }
+        public bool IsImplicit { get; internal set; }
 
         public IMatchOperation[] MatchOps
         {
@@ -115,7 +86,7 @@ namespace Manos.Routing
             set { match_ops = value; }
         }
 
-        public IList<HttpMethod> Methods
+        public System.Collections.Generic.IList<HttpMethod> Methods
         {
             get { return methods; }
             set
@@ -127,30 +98,21 @@ namespace Manos.Routing
             }
         }
 
-        public IManosTarget Target
-        {
-            get;
-            set;
-        }
+        public IManosTarget Target { get; set; }
 
         //
         // TODO: These also need to be an observable collection
         // so we can throw an exception if someone tries to add 
         // a child when we already have a Target
         //
-        public IList<RouteHandler> Children
-        {
-            get;
-            private set;
-        }
+        public System.Collections.Generic.IList<RouteHandler> Children { get; private set; }
 
         public bool HasPatterns
         {
-            get
-            {
-                return match_ops != null && match_ops.Length > 0;
-            }
+            get { return match_ops != null && match_ops.Length > 0; }
         }
+
+        #region IEnumerable<RouteHandler> Members
 
         IEnumerator IEnumerable.GetEnumerator()
         {
@@ -167,6 +129,25 @@ namespace Manos.Routing
                     yield return subchild;
                 }
             }
+        }
+
+        #endregion
+
+        private void HandleChildrenCollectionChanged(object sender, EventArgs e)
+        {
+            if (Target != null)
+                throw new InvalidOperationException("Can not add Children to a RouteHandler that has a Target set.");
+        }
+
+        private void SetupChildrenCollection()
+        {
+            var children = new ArrayList<RouteHandler>();
+
+            children.ItemInserted += HandleChildrenCollectionChanged;
+            children.ItemsAdded += HandleChildrenCollectionChanged;
+            children.ItemRemovedAt += HandleChildrenCollectionChanged;
+            children.ItemsRemoved += HandleChildrenCollectionChanged;
+            Children = children;
         }
 
         public void Add(RouteHandler child)
@@ -257,4 +238,3 @@ namespace Manos.Routing
         }
     }
 }
-

@@ -23,25 +23,19 @@
 //
 
 
-using System;
 using NUnit.Framework;
-
-using Manos;
 
 namespace Manos.Http.Tests
 {
+    [TestFixture]
+    public class HttpRequestTest
+    {
+        [Test]
+        public void TestNoNullQueryData()
+        {
+            // var r = new HttpRequest (new MockHttpTransaction (), .... );
 
-
-	[TestFixture()]
-	public class HttpRequestTest
-	{
-
-		[Test()]
-		public void TestNoNullQueryData ()
-		{
-			// var r = new HttpRequest (new MockHttpTransaction (), .... );
-			
-			// Should.NotBeNull (r.QueryData);
-		}
-	}
+            // Should.NotBeNull (r.QueryData);
+        }
+    }
 }

@@ -24,307 +24,321 @@
 
 
 using System;
+using System.Collections.Generic;
+using System.Globalization;
 using System.IO;
 using System.Text;
-using System.Net;
-using System.Net.Sockets;
-using System.Globalization;
-using System.Collections;
-using System.Collections.Generic;
-using System.Collections.Specialized;
 
+namespace Manos.Http
+{
+    public class HttpHeaders
+    {
+        public static readonly string CONTENT_LENGTH_KEY = "Content-Length";
+        private readonly Dictionary<string, string> items = new Dictionary<string, string>();
 
+        private long? content_length;
+        private Encoding encoding;
 
-namespace Manos.Http {
+        public long? ContentLength
+        {
+            get { return content_length; }
+            set
+            {
+                if (value < 0)
+                    throw new ArgumentException("value");
 
-	public class HttpHeaders {
+                content_length = value;
+                if (value == null)
+                {
+                    items.Remove(CONTENT_LENGTH_KEY);
+                    return;
+                }
+                items[CONTENT_LENGTH_KEY] = value.ToString();
+            }
+        }
 
-		public static readonly string CONTENT_LENGTH_KEY = "Content-Length";
-		
-		private long? content_length;
-		private Encoding encoding;
+        public Encoding ContentEncoding
+        {
+            get
+            {
+                if (encoding == null)
+                    SetEncodingInternal();
+                return encoding;
+            }
+            set { encoding = value; }
+        }
 
-		Dictionary<string,string> items = new Dictionary<string,string> ();
+        public Dictionary<string, string>.KeyCollection Keys
+        {
+            get { return items.Keys; }
+        }
 
-		public HttpHeaders ()
-		{
-		}
+        public string this[string name]
+        {
+            get
+            {
+                if (name == null)
+                    throw new ArgumentNullException("name");
+                return items[NormalizeName(name)];
+            }
+        }
 
-		public long? ContentLength {
-			get { return content_length; }
-			set {
-				if (value < 0)
-					throw new ArgumentException ("value");
-				
-				content_length = value;
-				if (value == null) {
-					items.Remove (CONTENT_LENGTH_KEY);
-					return;
-				}
-				items [CONTENT_LENGTH_KEY] = value.ToString ();
-			}
-		}
+        public int Count
+        {
+            get { return items.Count; }
+        }
 
-		public Encoding ContentEncoding {
-			get {
-				if (encoding == null)
-					SetEncodingInternal ();
-				return encoding;
-			}
-			set {
-				encoding = value;
-			}
-		}
+        private void SetEncodingInternal()
+        {
+            string content;
 
-		private void SetEncodingInternal ()
-		{
-			string content;
+            if (!TryGetNormalizedValue("Content-Type", out content))
+            {
+                encoding = Encoding.ASCII;
+                return;
+            }
 
-			if (!TryGetNormalizedValue ("Content-Type", out content)) {
-				encoding = Encoding.ASCII;
-				return;
-			}
+            string charset = GetAttribute(content, "; charset=");
+            if (charset == null)
+            {
+                encoding = Encoding.Default;
+                return;
+            }
 
-			string charset = HttpHeaders.GetAttribute (content, "; charset=");
-			if (charset == null) {
-				encoding = Encoding.Default;
-				return;
-			}
+            try
+            {
+                encoding = Encoding.GetEncoding(charset);
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("[non-fatal] Exception while setting encoding:");
+                Console.Error.WriteLine(e);
 
-			try {
-				encoding = Encoding.GetEncoding (charset);
-			} catch (Exception e) {
-				Console.Error.WriteLine ("[non-fatal] Exception while setting encoding:");
-				Console.Error.WriteLine (e);
+                encoding = Encoding.Default;
+            }
+        }
 
-				encoding = Encoding.Default;
-			}
-		}
+        public bool TryGetValue(string key, out string value)
+        {
+            return TryGetNormalizedValue(NormalizeName(key), out value);
+        }
 
-		public Dictionary<string,string>.KeyCollection Keys {
-			get { return items.Keys; }
-		}
+        public bool TryGetNormalizedValue(string key, out string value)
+        {
+            return items.TryGetValue(key, out value);
+        }
 
-		public string this [string name] {
-			get {
-				if (name == null)
-					throw new ArgumentNullException ("name");
-				return items [NormalizeName (name)];
-			}
-		}
+        public void Parse(TextReader reader)
+        {
+            string line = reader.ReadLine();
+            while (line != null)
+            {
+                int line_end = line.Length - 1;
 
-		public int Count {
-			get { return items.Count; }	
-		}
+                if (String.IsNullOrEmpty(line))
+                    return;
 
-		public bool TryGetValue (string key, out string value)
-		{
-			return TryGetNormalizedValue (NormalizeName (key), out value);
-		}
+                if (Char.IsWhiteSpace(line[0]))
+                    throw new HttpException("Malformed HTTP header. Found whitespace before data.");
 
-		public bool TryGetNormalizedValue (string key, out string value)
-		{
-			return items.TryGetValue (key, out value);
-		}
+                while (Char.IsWhiteSpace(line[line_end]))
+                {
+                    line_end--;
+                    if (line_end == 0)
+                        throw new HttpException("Malformed HTTP header. No data found.");
+                }
 
-		public void Parse (TextReader reader)
-		{
-			string line = reader.ReadLine ();
-			while (line != null) {
-				int line_end = line.Length - 1;
-				
-				if (String.IsNullOrEmpty (line))
-					return;
-				
-				if (Char.IsWhiteSpace (line [0]))
-					throw new HttpException ("Malformed HTTP header. Found whitespace before data.");
-				
-				while (Char.IsWhiteSpace (line [line_end])) {
-					line_end--;
-					if (line_end == 0)
-						throw new HttpException ("Malformed HTTP header. No data found.");
-				}
+                int colon = line.IndexOf(':');
+                if (colon <= 0)
+                    throw new HttpException("Malformed HTTP header. No colon found.");
+                if (colon >= line_end)
+                    throw new HttpException("Malformed HTTP header. No value found.");
+                string value = line.Substring(colon + 1, line_end - colon).TrimStart();
+                if (value.Length == 0)
+                    throw new HttpException("Malformed HTTP header. No Value found.");
 
-				int colon = line.IndexOf (':');
-				if (colon <= 0) 
-					throw new HttpException ("Malformed HTTP header. No colon found.");
-				if (colon >= line_end)
-					throw new HttpException ("Malformed HTTP header. No value found.");
-				string value = line.Substring (colon + 1, line_end - colon).TrimStart ();
-				if (value.Length == 0)
-					throw new HttpException ("Malformed HTTP header. No Value found.");
-				
-				string key = line.Substring (0, colon);
-				
-				//
-				// If the next line starts with whitespace its part of the current value
-				//
-				line = reader.ReadLine ();
-				while (line != null && line.Length > 0 && Char.IsWhiteSpace (line [0])) {
-					value += " " + line.Trim ();
-					line = reader.ReadLine ();
-				}
+                string key = line.Substring(0, colon);
 
-				SetHeader (key, value);
-			}
-		}
+                //
+                // If the next line starts with whitespace its part of the current value
+                //
+                line = reader.ReadLine();
+                while (line != null && line.Length > 0 && Char.IsWhiteSpace(line[0]))
+                {
+                    value += " " + line.Trim();
+                    line = reader.ReadLine();
+                }
 
-		public void Write (StringBuilder builder, ICollection<HttpCookie> cookies, Encoding encoding)
-		{
-			foreach (var h in items.Keys) {
-				string header = (string) h;
-				builder.Append (header);
-				builder.Append (": ");
-				builder.Append (items [header]);
-				builder.Append ("\r\n");
-			}
+                SetHeader(key, value);
+            }
+        }
 
-			if (cookies != null) {
-				foreach (HttpCookie cookie in cookies) {
-					builder.Append (cookie.ToHeaderString ());
-				}
-			}
-			builder.Append ("\r\n");
-		}
+        public void Write(StringBuilder builder, ICollection<HttpCookie> cookies, Encoding encoding)
+        {
+            foreach (string h in items.Keys)
+            {
+                string header = h;
+                builder.Append(header);
+                builder.Append(": ");
+                builder.Append(items[header]);
+                builder.Append("\r\n");
+            }
 
-		public void SetHeader (string name, string value)
-		{
-			if (name == null)
-				throw new ArgumentNullException ("name");
-			
-			name = NormalizeName (name);
+            if (cookies != null)
+            {
+                foreach (HttpCookie cookie in cookies)
+                {
+                    builder.Append(cookie.ToHeaderString());
+                }
+            }
+            builder.Append("\r\n");
+        }
 
-			SetNormalizedHeader (name, value);
-		}
+        public void SetHeader(string name, string value)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
 
-		public void SetNormalizedHeader (string name, string value)
-		{
-			if (!IsValidHeaderName (name))
-				throw new ArgumentException (String.Format ("Invalid header '{0}'.", name));
-			
-			if (name == CONTENT_LENGTH_KEY) {
-				SetContentLength (value);
-				return;
-			}
+            name = NormalizeName(name);
 
-			if (value == null) {
-				items.Remove (name);
-				return;
-			}
-				
-			items [name] = value;
-		}
+            SetNormalizedHeader(name, value);
+        }
 
-		public static string NormalizeName (string name)
-		{
-			if (String.IsNullOrEmpty (name))
-				throw new ArgumentException ("name", "name must be a non-null non-empty string");
-			
-			StringBuilder res = null;
+        public void SetNormalizedHeader(string name, string value)
+        {
+            if (!IsValidHeaderName(name))
+                throw new ArgumentException(String.Format("Invalid header '{0}'.", name));
 
-			if (Char.IsLower (name [0])) {
-				res = new StringBuilder (name);
-				res [0] = Char.ToUpper (name [0], CultureInfo.InvariantCulture);
-			}
-			
-			char p = name [0];
-			for (int i = 1; i < name.Length; i++) {
-				char c = name [i];
-				if (p == '-' && Char.IsLower (c)) {
-					if (res == null)
-						res = new StringBuilder (name);
-					res [i] = Char.ToUpper (c, CultureInfo.InvariantCulture);
-				} else if (p != '-' && Char.IsUpper (c)) {
-					if (res == null)
-						res = new StringBuilder (name);
-					res [i] = Char.ToLower (c, CultureInfo.InvariantCulture);
-				}
-				p = c;
-			}
+            if (name == CONTENT_LENGTH_KEY)
+            {
+                SetContentLength(value);
+                return;
+            }
 
-			if (res != null)
-				return res.ToString ();
+            if (value == null)
+            {
+                items.Remove(name);
+                return;
+            }
 
-			return name;
-		}
+            items[name] = value;
+        }
 
-		public bool IsValidHeaderName (string name)
-		{
-			// TODO: What more can I do here?
-			if (name.Length == 0)
-				return false;
-			return true;
-		}
-		
-		public void SetContentLength (string value)
-		{
-			if (value == null) {
-				items.Remove (CONTENT_LENGTH_KEY);
-				content_length = null;
-				return;
-			}
-			
-			int cl;
-			if (!Int32.TryParse (value, out cl))
-				throw new ArgumentException ("Malformed HTTP Header, invalid Content-Length value.", "value");
-			if (cl < 0)
-				throw new ArgumentException ("Content-Length must be a positive integer.", "value");
-			ContentLength = cl;
-		}
+        public static string NormalizeName(string name)
+        {
+            if (String.IsNullOrEmpty(name))
+                throw new ArgumentException("name", "name must be a non-null non-empty string");
 
-		/// from mono's System.Web/HttpRequest.cs
-		public static string GetAttribute (string header_value, string attr)
-		{
-			int start = header_value.IndexOf (attr);
-			if (start == -1)
-				return null;
+            StringBuilder res = null;
 
-			start += attr.Length;
-			if (start >= header_value.Length)
-				return null;
+            if (Char.IsLower(name[0]))
+            {
+                res = new StringBuilder(name);
+                res[0] = Char.ToUpper(name[0], CultureInfo.InvariantCulture);
+            }
 
-			char ending = header_value [start];
-			if (ending != '"')
-				ending = ' ';
+            char p = name[0];
+            for (int i = 1; i < name.Length; i++)
+            {
+                char c = name[i];
+                if (p == '-' && Char.IsLower(c))
+                {
+                    if (res == null)
+                        res = new StringBuilder(name);
+                    res[i] = Char.ToUpper(c, CultureInfo.InvariantCulture);
+                }
+                else if (p != '-' && Char.IsUpper(c))
+                {
+                    if (res == null)
+                        res = new StringBuilder(name);
+                    res[i] = Char.ToLower(c, CultureInfo.InvariantCulture);
+                }
+                p = c;
+            }
 
-			int end = header_value.IndexOf (ending, start + 1);
-			if (end == -1) {
-				// Use the full string unless its a unclosed quote
-				// TODO: What about multiline values, can they be broken across lines?
-				return (ending == '"') ? null : header_value.Substring (start);
-			}
+            if (res != null)
+                return res.ToString();
 
-			return header_value.Substring (start + 1, end - start - 1);
-		}
+            return name;
+        }
 
-		/// from mono's System.Web.Util/HttpEncoder.cs
-		private static string EncodeHeaderString (string input)
-		{
-			StringBuilder sb = null;
-			char ch;
-			
-			for (int i = 0; i < input.Length; i++) {
-				ch = input [i];
+        public bool IsValidHeaderName(string name)
+        {
+            // TODO: What more can I do here?
+            if (name.Length == 0)
+                return false;
+            return true;
+        }
 
-				if ((ch < 32 && ch != 9) || ch == 127)
-					StringBuilderAppend (String.Format ("%{0:x2}", (int)ch), ref sb);
-			}
+        public void SetContentLength(string value)
+        {
+            if (value == null)
+            {
+                items.Remove(CONTENT_LENGTH_KEY);
+                content_length = null;
+                return;
+            }
 
-			if (sb != null)
-				return sb.ToString ();
+            int cl;
+            if (!Int32.TryParse(value, out cl))
+                throw new ArgumentException("Malformed HTTP Header, invalid Content-Length value.", "value");
+            if (cl < 0)
+                throw new ArgumentException("Content-Length must be a positive integer.", "value");
+            ContentLength = cl;
+        }
 
-			return input;
-		}
+        /// from mono's System.Web/HttpRequest.cs
+        public static string GetAttribute(string header_value, string attr)
+        {
+            int start = header_value.IndexOf(attr);
+            if (start == -1)
+                return null;
 
-		private static void StringBuilderAppend (string s, ref StringBuilder sb)
-		{
-			if (sb == null)
-				sb = new StringBuilder (s);
-			else
-				sb.Append (s);
-		}
-	}
+            start += attr.Length;
+            if (start >= header_value.Length)
+                return null;
+
+            char ending = header_value[start];
+            if (ending != '"')
+                ending = ' ';
+
+            int end = header_value.IndexOf(ending, start + 1);
+            if (end == -1)
+            {
+                // Use the full string unless its a unclosed quote
+                // TODO: What about multiline values, can they be broken across lines?
+                return (ending == '"') ? null : header_value.Substring(start);
+            }
+
+            return header_value.Substring(start + 1, end - start - 1);
+        }
+
+        /// from mono's System.Web.Util/HttpEncoder.cs
+        private static string EncodeHeaderString(string input)
+        {
+            StringBuilder sb = null;
+            char ch;
+
+            for (int i = 0; i < input.Length; i++)
+            {
+                ch = input[i];
+
+                if ((ch < 32 && ch != 9) || ch == 127)
+                    StringBuilderAppend(String.Format("%{0:x2}", (int) ch), ref sb);
+            }
+
+            if (sb != null)
+                return sb.ToString();
+
+            return input;
+        }
+
+        private static void StringBuilderAppend(string s, ref StringBuilder sb)
+        {
+            if (sb == null)
+                sb = new StringBuilder(s);
+            else
+                sb.Append(s);
+        }
+    }
 }
-
-
-

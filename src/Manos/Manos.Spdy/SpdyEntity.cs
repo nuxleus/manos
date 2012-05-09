@@ -23,74 +23,43 @@
 //
 
 
-
-
 using System;
-using System.IO;
-using System.Text;
-using System.Net;
-using System.Globalization;
-using System.Collections;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-
-
-using Libev;
-using Manos.IO;
-using Manos.IO.Managed;
+using System.Text;
 using Manos.Collections;
 using Manos.Http;
+using Manos.IO;
 
 namespace Manos.Spdy
 {
-
     /// <summary>
     ///  A base class for SpdyRequest and SpdyResponse.  Generally user code should not care at all about
     ///  this class, it just exists to eliminate some code duplication between the two derived types.
     /// </summary>
     public abstract class SpdyEntity : IDisposable, IHttpDataRecipient
     {
+        private static readonly long MAX_BUFFERED_CONTENT_LENGTH = 2621440;
+                                     // 2.5MB (Eventually this will be an environment var)
 
-        private static readonly long MAX_BUFFERED_CONTENT_LENGTH = 2621440; // 2.5MB (Eventually this will be an environment var)
-
-        private HttpHeaders headers;
+        private IHttpBodyHandler body_handler;
 
         private DataDictionary data;
+        private bool finished_reading;
+        private HttpHeaders headers;
         private DataDictionary post_data;
 
         private Dictionary<string, object> properties;
         private Dictionary<string, UploadedFile> uploaded_files;
 
-        private IHttpBodyHandler body_handler;
-        private bool finished_reading;
-
 
         public SpdyEntity(Context context)
         {
-            this.Context = context;
+            Context = context;
         }
 
-        public Context Context
-        {
-            get;
-            private set;
-        }
+        public Context Context { get; private set; }
 
-        ~SpdyEntity()
-        {
-            Dispose();
-        }
-
-        public void Dispose()
-        {
-            Socket = null;
-        }
-
-        public ITcpSocket Socket
-        {
-            get;
-            protected set;
-        }
+        public ITcpSocket Socket { get; protected set; }
 
         public HttpHeaders Headers
         {
@@ -100,53 +69,20 @@ namespace Manos.Spdy
                     headers = new HttpHeaders();
                 return headers;
             }
-            set
-            {
-                headers = value;
-            }
+            set { headers = value; }
         }
 
-        public HttpMethod Method
-        {
-            get;
-            set;
-        }
+        public HttpMethod Method { get; set; }
 
-        public int MajorVersion
-        {
-            get;
-            set;
-        }
+        public int MajorVersion { get; set; }
 
-        public int MinorVersion
-        {
-            get;
-            set;
-        }
+        public int MinorVersion { get; set; }
 
-        public string RemoteAddress
-        {
-            get;
-            set;
-        }
+        public string RemoteAddress { get; set; }
 
-        public int RemotePort
-        {
-            get;
-            set;
-        }
+        public int RemotePort { get; set; }
 
-        public string Path
-        {
-            get;
-            set;
-        }
-
-        public Encoding ContentEncoding
-        {
-            get { return Headers.ContentEncoding; }
-            set { Headers.ContentEncoding = value; }
-        }
+        public string Path { get; set; }
 
 
         public DataDictionary Data
@@ -157,6 +93,33 @@ namespace Manos.Spdy
                     data = new DataDictionary();
                 return data;
             }
+        }
+
+        public Dictionary<string, object> Properties
+        {
+            get
+            {
+                if (properties == null)
+                    properties = new Dictionary<string, object>();
+                return properties;
+            }
+        }
+
+        #region IDisposable Members
+
+        public void Dispose()
+        {
+            Socket = null;
+        }
+
+        #endregion
+
+        #region IHttpDataRecipient Members
+
+        public Encoding ContentEncoding
+        {
+            get { return Headers.ContentEncoding; }
+            set { Headers.ContentEncoding = value; }
         }
 
         public DataDictionary PostData
@@ -177,11 +140,7 @@ namespace Manos.Spdy
             }
         }
 
-        public string PostBody
-        {
-            get;
-            set;
-        }
+        public string PostBody { get; set; }
 
         public Dictionary<string, UploadedFile> Files
         {
@@ -193,14 +152,11 @@ namespace Manos.Spdy
             }
         }
 
-        public Dictionary<string, object> Properties
+        #endregion
+
+        ~SpdyEntity()
         {
-            get
-            {
-                if (properties == null)
-                    properties = new Dictionary<string, object>();
-                return properties;
-            }
+            Dispose();
         }
 
         public void SetProperty(string name, object o)
@@ -244,7 +200,7 @@ namespace Manos.Spdy
             object res = GetProperty(name);
             if (res == null)
                 return default(T);
-            return (T)res;
+            return (T) res;
         }
 
         protected void SetDataDictionary(DataDictionary old, DataDictionary newd)
@@ -364,10 +320,10 @@ namespace Manos.Spdy
         {
             IAsyncWatcher completeWatcher;
             completeWatcher = Context.CreateAsyncWatcher(delegate
-            {
-                //completeWatcher.Dispose();
-                callback();
-            });
+                                                             {
+                                                                 //completeWatcher.Dispose();
+                                                                 callback();
+                                                             });
             completeWatcher.Start();
         }
 
@@ -387,7 +343,4 @@ namespace Manos.Spdy
         public event Action OnCompleted;
         public abstract void WriteToBody(byte[] data, int position, int length);
     }
-
 }
-
-

@@ -24,36 +24,28 @@
 
 
 using System;
-using NUnit.Framework;
-
-using Manos.Routing;
-
 using Manos.Http;
-using Manos.Testing;
 using Manos.Http.Testing;
 using Manos.Routing.Testing;
-
-
 using Manos.ShouldExt;
+using NUnit.Framework;
 
 namespace Manos.Routing.Tests
 {
-
-
-    [TestFixture()]
+    [TestFixture]
     public class RouteHandlerTest
     {
-
         public class TestApp : ManosApp
         {
             public TestApp()
             {
-                this.Route("/TESTING", new TestModule());
+                Route("/TESTING", new TestModule());
             }
+
+            #region Nested type: TestModule
 
             public class TestModule : ManosModule
             {
-
                 public void Route1(IManosContext ctx)
                 {
                     ctx.Response.Write("Route1");
@@ -82,6 +74,7 @@ namespace Manos.Routing.Tests
                 }
             }
 
+            #endregion
         }
 
         private static void FakeAction(IManosContext ctx)
@@ -90,6 +83,65 @@ namespace Manos.Routing.Tests
 
         private static void FakeAction2(IManosContext ctx)
         {
+        }
+
+        [Test]
+        public void Find_PartialMatchAtBeginningOfChildlessHandler_ReturnsProperRoute()
+        {
+            IMatchOperation fooOp = MatchOperationFactory.Create("foo", MatchType.String);
+            IMatchOperation foobarOp = MatchOperationFactory.Create("foobar", MatchType.String);
+            var rh_bad = new RouteHandler(fooOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction));
+            var rh_good = new RouteHandler(foobarOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction2));
+            var rh = new RouteHandler();
+
+            rh.Add(rh_bad);
+            rh.Add(rh_good);
+
+
+            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foobar");
+            IManosTarget res = rh.Find(request);
+
+            Assert.AreEqual(rh_good.Target, res);
+        }
+
+        [Test]
+        public void Find_PartialMatchAtBeginningOfHandlerWithChildren_ReturnsProperRoute()
+        {
+            IMatchOperation fooOp = MatchOperationFactory.Create("foo", MatchType.String);
+            IMatchOperation foobarOp = MatchOperationFactory.Create("foobar", MatchType.String);
+            IMatchOperation blahOp = MatchOperationFactory.Create("blah", MatchType.String);
+            var rh_bad = new RouteHandler(fooOp, HttpMethod.HTTP_GET);
+            var rh_good = new RouteHandler(foobarOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction2));
+            var rh = new RouteHandler();
+
+            rh_bad.Children.Add(new RouteHandler(blahOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction)));
+
+            rh.Add(rh_bad);
+            rh.Add(rh_good);
+
+            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foobar");
+            IManosTarget res = rh.Find(request);
+
+            Assert.AreEqual(rh_good.Target, res);
+        }
+
+        [Test]
+        public void HasPatternsTest()
+        {
+            IMatchOperation fooOp = MatchOperationFactory.Create("foo/", MatchType.String);
+            IMatchOperation foobarOp = MatchOperationFactory.Create("foobar", MatchType.String);
+            var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET);
+
+            Assert.IsTrue(rh.HasPatterns, "a1");
+
+            rh.Children.Clear();
+            Assert.IsFalse(rh.HasPatterns, "a2");
+
+            rh.Add(new RouteHandler(foobarOp, HttpMethod.HTTP_GET));
+            Assert.IsTrue(rh.HasPatterns, "a3");
+
+            rh.MatchOps = null;
+            Assert.IsFalse(rh.HasPatterns, "a4");
         }
 
         [Test]
@@ -130,7 +182,6 @@ namespace Manos.Routing.Tests
             t2.HandleTransaction(t2, txn2);
 
             Assert.AreEqual("(R2b) Hello 'Andrew', you are '29'", txn2.ResponseString);
-
         }
 
         [Test]
@@ -151,45 +202,10 @@ namespace Manos.Routing.Tests
             t2.HandleTransaction(t2, txn2);
 
             Assert.AreEqual("'Andrew', you are '29'", txn2.ResponseString);
-
         }
 
 
-        [Test()]
-        public void TestStrMatch()
-        {
-            IMatchOperation op = MatchOperationFactory.Create("^foo", MatchType.Regex);
-            var target = new MockManosTarget();
-            var rh = new RouteHandler(op, HttpMethod.HTTP_GET, target);
-            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo");
-
-            Assert.AreEqual(target, rh.Find(request), "should-match");
-
-            request = new MockHttpRequest(HttpMethod.HTTP_GET, "garbage-foo");
-            Assert.IsNull(rh.Find(request), "garbage-input");
-        }
-
-        [Test()]
-        public void TestStrMatchDeep()
-        {
-            IMatchOperation fooOp = MatchOperationFactory.Create("foo/", MatchType.String);
-            IMatchOperation barOp = MatchOperationFactory.Create("bar", MatchType.String);
-            var target = new MockManosTarget();
-            var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET) {
-        new RouteHandler (barOp, HttpMethod.HTTP_GET, target),
-      };
-
-            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo/bar");
-            Assert.AreEqual(target, rh.Find(request));
-
-            request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo/foo");
-            Assert.IsNull(rh.Find(request), "repeate-input");
-
-            request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo/badbar");
-            Assert.IsNull(rh.Find(request), "matched-input");
-        }
-
-        [Test()]
+        [Test]
         public void TestChangePatterns()
         {
             //
@@ -203,7 +219,8 @@ namespace Manos.Routing.Tests
             var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET, target);
             var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo");
 
-            rh.MatchOps[0] = MatchOperationFactory.Create("bar", MatchType.Regex); ;
+            rh.MatchOps[0] = MatchOperationFactory.Create("bar", MatchType.Regex);
+            ;
             Assert.AreEqual(target, rh.Find(request), "sanity-1");
 
 
@@ -211,6 +228,15 @@ namespace Manos.Routing.Tests
 
             request = new MockHttpRequest(HttpMethod.HTTP_GET, "baz");
             Assert.AreEqual(target, rh.Find(request), "changed");
+        }
+
+        [Test]
+        public void TestNoChildrenOfTarget()
+        {
+            IMatchOperation fooOp = MatchOperationFactory.Create("foo", MatchType.String);
+            var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction));
+
+            Should.Throw<InvalidOperationException>(() => rh.Children.Add(new RouteHandler(fooOp, HttpMethod.HTTP_POST)));
         }
 
         [Test]
@@ -234,22 +260,38 @@ namespace Manos.Routing.Tests
         }
 
         [Test]
-        public void HasPatternsTest()
+        public void TestStrMatch()
+        {
+            IMatchOperation op = MatchOperationFactory.Create("^foo", MatchType.Regex);
+            var target = new MockManosTarget();
+            var rh = new RouteHandler(op, HttpMethod.HTTP_GET, target);
+            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo");
+
+            Assert.AreEqual(target, rh.Find(request), "should-match");
+
+            request = new MockHttpRequest(HttpMethod.HTTP_GET, "garbage-foo");
+            Assert.IsNull(rh.Find(request), "garbage-input");
+        }
+
+        [Test]
+        public void TestStrMatchDeep()
         {
             IMatchOperation fooOp = MatchOperationFactory.Create("foo/", MatchType.String);
-            IMatchOperation foobarOp = MatchOperationFactory.Create("foobar", MatchType.String);
-            var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET);
+            IMatchOperation barOp = MatchOperationFactory.Create("bar", MatchType.String);
+            var target = new MockManosTarget();
+            var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET)
+                         {
+                             new RouteHandler(barOp, HttpMethod.HTTP_GET, target),
+                         };
 
-            Assert.IsTrue(rh.HasPatterns, "a1");
+            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo/bar");
+            Assert.AreEqual(target, rh.Find(request));
 
-            rh.Children.Clear();
-            Assert.IsFalse(rh.HasPatterns, "a2");
+            request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo/foo");
+            Assert.IsNull(rh.Find(request), "repeate-input");
 
-            rh.Add(new RouteHandler(foobarOp, HttpMethod.HTTP_GET));
-            Assert.IsTrue(rh.HasPatterns, "a3");
-
-            rh.MatchOps = null;
-            Assert.IsFalse(rh.HasPatterns, "a4");
+            request = new MockHttpRequest(HttpMethod.HTTP_GET, "foo/badbar");
+            Assert.IsNull(rh.Find(request), "matched-input");
         }
 
         [Test]
@@ -271,9 +313,10 @@ namespace Manos.Routing.Tests
         {
             IMatchOperation animalOp = MatchOperationFactory.Create("(?<animal>.+)/", MatchType.Regex);
             IMatchOperation nameOp = MatchOperationFactory.Create("(?<name>.+)/", MatchType.Regex);
-            var rh = new RouteHandler(animalOp, HttpMethod.HTTP_GET) {
-                new RouteHandler (nameOp, HttpMethod.HTTP_GET, new ActionTarget (FakeAction)),	                                                         
-              };
+            var rh = new RouteHandler(animalOp, HttpMethod.HTTP_GET)
+                         {
+                             new RouteHandler(nameOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction)),
+                         };
             var request = new MockHttpRequest(HttpMethod.HTTP_GET, "dog/roxy");
 
             Should.NotBeNull(rh.Find(request), "target");
@@ -282,55 +325,6 @@ namespace Manos.Routing.Tests
 
             Assert.AreEqual("dog", request.UriData["animal"]);
             Assert.AreEqual("roxy", request.UriData["name"]);
-        }
-
-        [Test]
-        public void TestNoChildrenOfTarget()
-        {
-            IMatchOperation fooOp = MatchOperationFactory.Create("foo", MatchType.String);
-            var rh = new RouteHandler(fooOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction));
-
-            Should.Throw<InvalidOperationException>(() => rh.Children.Add(new RouteHandler(fooOp, HttpMethod.HTTP_POST)));
-        }
-
-        [Test]
-        public void Find_PartialMatchAtBeginningOfChildlessHandler_ReturnsProperRoute()
-        {
-            IMatchOperation fooOp = MatchOperationFactory.Create("foo", MatchType.String);
-            IMatchOperation foobarOp = MatchOperationFactory.Create("foobar", MatchType.String);
-            var rh_bad = new RouteHandler(fooOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction));
-            var rh_good = new RouteHandler(foobarOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction2));
-            var rh = new RouteHandler();
-
-            rh.Add(rh_bad);
-            rh.Add(rh_good);
-
-
-            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foobar");
-            var res = rh.Find(request);
-
-            Assert.AreEqual(rh_good.Target, res);
-        }
-
-        [Test]
-        public void Find_PartialMatchAtBeginningOfHandlerWithChildren_ReturnsProperRoute()
-        {
-            IMatchOperation fooOp = MatchOperationFactory.Create("foo", MatchType.String);
-            IMatchOperation foobarOp = MatchOperationFactory.Create("foobar", MatchType.String);
-            IMatchOperation blahOp = MatchOperationFactory.Create("blah", MatchType.String);
-            var rh_bad = new RouteHandler(fooOp, HttpMethod.HTTP_GET);
-            var rh_good = new RouteHandler(foobarOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction2));
-            var rh = new RouteHandler();
-
-            rh_bad.Children.Add(new RouteHandler(blahOp, HttpMethod.HTTP_GET, new ActionTarget(FakeAction)));
-
-            rh.Add(rh_bad);
-            rh.Add(rh_good);
-
-            var request = new MockHttpRequest(HttpMethod.HTTP_GET, "foobar");
-            var res = rh.Find(request);
-
-            Assert.AreEqual(rh_good.Target, res);
         }
     }
 }

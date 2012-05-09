@@ -28,13 +28,9 @@
 //
 //
 
-using System.IO;
-
 using Manos.IO;
 
-namespace Manos.Http {
-
-	public delegate void HttpErrorCallback (HttpParser parser, string message, ByteBuffer buffer, int initial_position);
+namespace Manos.Http
+{
+    public delegate void HttpErrorCallback(HttpParser parser, string message, ByteBuffer buffer, int initial_position);
 }
-
-

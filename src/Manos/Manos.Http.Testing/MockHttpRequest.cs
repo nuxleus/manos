@@ -24,223 +24,196 @@
 
 
 using System;
-using System.Text;
-using System.Globalization;
 using System.Collections.Generic;
-using System.Collections.Specialized;
-
-using Manos;
-using Manos.IO;
-using Manos.Http;
+using System.Globalization;
+using System.Text;
 using Manos.Collections;
-
-
+using Manos.IO;
 
 namespace Manos.Http.Testing
 {
-	public class MockHttpRequest : IHttpRequest
-	{
-		private DataDictionary data;
-		private DataDictionary uri_data;
-		private DataDictionary post_data;
-		private DataDictionary query_data;
-		private DataDictionary cookies;
-		private HttpHeaders headers;
-		private Dictionary<string,UploadedFile> uploaded_files;
-		private Encoding encoding;
-		
-		public MockHttpRequest()
-		{
-			Reset();		
-		}
-		
-		public MockHttpRequest (HttpMethod method, string path)
-		{
-			Method = method;
-			Path = path;
+    public class MockHttpRequest : IHttpRequest
+    {
+        private DataDictionary cookies;
+        private DataDictionary data;
+        private Encoding encoding;
+        private HttpHeaders headers;
+        private DataDictionary post_data;
+        private DataDictionary query_data;
+        private Dictionary<string, UploadedFile> uploaded_files;
+        private DataDictionary uri_data;
 
-			Reset();
-		}
+        public MockHttpRequest()
+        {
+            Reset();
+        }
 
-		public void Reset()
-		{
-			data = new DataDictionary ();
-			uri_data = new DataDictionary ();
-			query_data = new DataDictionary ();
-			post_data = new DataDictionary ();
-		
-			Properties = new Dictionary<string,object> ();
-		
-			data.Children.Add (UriData);
-			data.Children.Add (QueryData);
-			data.Children.Add (PostData);
-		}
-		
-		public void Dispose ()
-		{
-		}
+        public MockHttpRequest(HttpMethod method, string path)
+        {
+            Method = method;
+            Path = path;
 
-		public HttpMethod Method {
-			get;
-			set;
-		}
-		
-		
-		public string Path {
-			get;
-			set;
-		}
-		
-		public bool Aborted {
-			get;
-			private set;
-		}
-		
-		public DataDictionary Data {
-			get {
-				return data;
-			}
-		}
-		
-		public DataDictionary PostData {
-			get {
-			    return post_data;
-			}
-		}
+            Reset();
+        }
 
-		public DataDictionary UriData {
-			get {
-				return uri_data;
-			}
-			set {
-				uri_data = value;
-			}
-		}
-		
-		public DataDictionary QueryData {
-			get {
-			    return query_data;
-			}
-			set {
-				query_data = value;
-			}
-		}
+        public bool Aborted { get; private set; }
 
-		public DataDictionary Cookies {
-			get {
-				if (cookies == null)
-					cookies = new DataDictionary ();
-				return cookies;
-			}
-			
-			set { cookies = value; }
-		}
-		
-		public HttpHeaders Headers {
-			get {
-			    if (headers == null)
-			       headers = new HttpHeaders ();
-			    return headers;
-			}
-			set {
-				headers = value;
-			}
-		}
-		
-		public Encoding ContentEncoding {
-		       get {
-		       	   if (encoding == null)
-			      encoding = Encoding.Default;
-			   return encoding;
-		       }
-		}
+        #region IHttpRequest Members
 
-		public Dictionary<string,UploadedFile> Files {
-			get {
-			    if (uploaded_files == null)
-			       uploaded_files = new Dictionary<string,UploadedFile> ();
-			    return uploaded_files;
-			}
-		}
+        public void Dispose()
+        {
+        }
 
-		public int MajorVersion {
-			get;
-			set;
-		}
+        public HttpMethod Method { get; set; }
 
-		public int MinorVersion {
-			get;
-			set;
-		}
 
-		public ITcpSocket Socket {
-			get;
-			set;
-		}
+        public string Path { get; set; }
 
-		public string PostBody {
-			get;
-			set;
-		}
+        public DataDictionary Data
+        {
+            get { return data; }
+        }
 
-		public Dictionary<string,object> Properties {
-			get;
-			set;
-		}
+        public DataDictionary PostData
+        {
+            get { return post_data; }
+        }
 
-		public void SetProperty (string name, object o)
-		{
-			if (name == null)
-				throw new ArgumentNullException ("name");
+        public DataDictionary UriData
+        {
+            get { return uri_data; }
+            set { uri_data = value; }
+        }
 
-			if (o == null) {
-				Properties.Remove (name);
-				return;
-			}
+        public DataDictionary QueryData
+        {
+            get { return query_data; }
+            set { query_data = value; }
+        }
 
-			Properties [name] = o;
-		}
+        public DataDictionary Cookies
+        {
+            get
+            {
+                if (cookies == null)
+                    cookies = new DataDictionary();
+                return cookies;
+            }
 
-		public object GetProperty (string name)
-		{
-			if (name == null)
-				throw new ArgumentNullException ("name");
+            set { cookies = value; }
+        }
 
-			object res = null;
-			if (!Properties.TryGetValue (name, out res))
-				return null;
-				
-			return res;
-		}
+        public HttpHeaders Headers
+        {
+            get
+            {
+                if (headers == null)
+                    headers = new HttpHeaders();
+                return headers;
+            }
+            set { headers = value; }
+        }
 
-		public T GetProperty<T> (string name)
-		{
-			object res = GetProperty (name);
-			if (res == null)
-				return default (T);
-			return (T) res;
-		}
-		
-		public void Read (Action onClose)
-		{
-		}
+        public Encoding ContentEncoding
+        {
+            get
+            {
+                if (encoding == null)
+                    encoding = Encoding.Default;
+                return encoding;
+            }
+        }
 
-		public void SetWwwFormData (DataDictionary data)
-		{
-			PostData.Children.Add (data);
-		}
+        public Dictionary<string, UploadedFile> Files
+        {
+            get
+            {
+                if (uploaded_files == null)
+                    uploaded_files = new Dictionary<string, UploadedFile>();
+                return uploaded_files;
+            }
+        }
 
-		public void WriteMetadata (StringBuilder builder)
-		{
-			builder.Append (Encoding.ASCII.GetString (HttpMethodBytes.GetBytes (Method)));
-			builder.Append (" ");
-			builder.Append (Path);
-			builder.Append (" HTTP/");
-			builder.Append (MajorVersion.ToString (CultureInfo.InvariantCulture));
-			builder.Append (".");
-			builder.Append (MinorVersion.ToString (CultureInfo.InvariantCulture));
-			builder.Append ("\r\n");
-			Headers.Write (builder, null, Encoding.ASCII);		
-		}
-	}
+        public int MajorVersion { get; set; }
+
+        public int MinorVersion { get; set; }
+
+        public ITcpSocket Socket { get; set; }
+
+        public string PostBody { get; set; }
+
+        public Dictionary<string, object> Properties { get; set; }
+
+        public void SetProperty(string name, object o)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+
+            if (o == null)
+            {
+                Properties.Remove(name);
+                return;
+            }
+
+            Properties[name] = o;
+        }
+
+        public object GetProperty(string name)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+
+            object res = null;
+            if (!Properties.TryGetValue(name, out res))
+                return null;
+
+            return res;
+        }
+
+        public T GetProperty<T>(string name)
+        {
+            object res = GetProperty(name);
+            if (res == null)
+                return default (T);
+            return (T) res;
+        }
+
+        public void Read(Action onClose)
+        {
+        }
+
+        public void SetWwwFormData(DataDictionary data)
+        {
+            PostData.Children.Add(data);
+        }
+
+        public void WriteMetadata(StringBuilder builder)
+        {
+            builder.Append(Encoding.ASCII.GetString(HttpMethodBytes.GetBytes(Method)));
+            builder.Append(" ");
+            builder.Append(Path);
+            builder.Append(" HTTP/");
+            builder.Append(MajorVersion.ToString(CultureInfo.InvariantCulture));
+            builder.Append(".");
+            builder.Append(MinorVersion.ToString(CultureInfo.InvariantCulture));
+            builder.Append("\r\n");
+            Headers.Write(builder, null, Encoding.ASCII);
+        }
+
+        #endregion
+
+        public void Reset()
+        {
+            data = new DataDictionary();
+            uri_data = new DataDictionary();
+            query_data = new DataDictionary();
+            post_data = new DataDictionary();
+
+            Properties = new Dictionary<string, object>();
+
+            data.Children.Add(UriData);
+            data.Children.Add(QueryData);
+            data.Children.Add(PostData);
+        }
+    }
 }

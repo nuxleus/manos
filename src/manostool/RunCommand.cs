@@ -26,17 +26,15 @@
 using System;
 using System.Collections.Generic;
 
-using Manos.IO;
-
 namespace Manos.Tool
 {
     public class RunCommand
     {
         public int Run(string app, IList<string> args)
         {
-            IManosRun mr = Loader.LoadLibrary<IManosRun>(app, new List<string>());
+            var mr = Loader.LoadLibrary<IManosRun>(app, new List<string>());
 
-            string[] strargs = new string[args.Count];
+            var strargs = new string[args.Count];
             for (int i = 0; i < strargs.Length; i++)
             {
                 strargs[i] = args[i];
@@ -54,4 +52,3 @@ namespace Manos.Tool
         }
     }
 }
-

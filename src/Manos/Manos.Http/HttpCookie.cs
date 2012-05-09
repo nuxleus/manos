@@ -23,171 +23,166 @@
 //
 
 using System;
-using System.Collections;
 using System.Collections.Generic;
 using System.Text;
 using Manos.Collections;
 
 namespace Manos.Http
 {
-	public class HttpCookie
-	{
-		private Dictionary<string,string> values;
-		
-		public HttpCookie (string name, string value)
-		{
-			if (name == null)
-				throw new ArgumentNullException ("name");
-			if (value == null)
-				throw new ArgumentNullException ("value");
-			
-			values = new Dictionary<string, string> ();
-			values.Add (name, value);
-		}
-		
-		public Dictionary<string,string> Values {
-			get { return values; }
-		}
-		
-		public string Domain {
-			get;
-			set;
-		}
-		
-		public string Path { 
-			get; 
-			set; 
-		}
-		
-		public DateTime Expires { 
-			get; 
-			set; 
-		}
-		
-		public bool Secure { 
-			get; 
-			set; 
-		}
-		
-		public bool HttpOnly {
-			get;
-			set;
-		}
-		
-		public void WriteHeader (IHttpResponse response)
-		{
-			// TODO: Eventually I'd like to make this write as it goes instead of
-			// buffering into a stream, but I need to create the ResponseStream
-			// type first.
-			response.Write (ToHeaderString ());
-		}
-		
-		public string ToHeaderString ()
-		{
-			StringBuilder builder = new StringBuilder ();
-			
-			builder.Append ("Set-Cookie: ");
-			
-			bool first = true;
-			foreach (KeyValuePair<string,string> kv in Values) {
-				if (!first)
-					builder.Append ("; ");
-				first = false;
-				builder.Append (EscapeStr (kv.Key));
-				builder.Append ("=");
-				builder.Append (EscapeStr (kv.Value));
-			}
-			
-			if (Domain != null) {
-				builder.Append ("; domain=");
-				builder.Append (EscapeStr (Domain));
-			}
-			
-			if (Path != null) {
-				builder.Append ("; path=");
-				builder.Append (EscapeStr (Path));
-			}
-			
-			if (Expires != DateTime.MinValue) {
-				builder.Append ("; expires=");
-				builder.Append (Expires.ToUniversalTime ().ToString ("r"));
-			}
-			
-			if (Secure) {
-				builder.Append ("; secure");	
-			}
-			
-			if (HttpOnly) {
-				builder.Append ("; HttpOnly");	
-			}
-			
-			builder.Append ("\r\n");
-			
-			return builder.ToString ();
-		}
-		
-		public string ToJsString ()
-		{
-			return null;	
-		}
-		
-		private static string escape_chars = "';,=";
-		
-		public static string EscapeStr (string key)
-		{
-			// TODO: UrlEncode
-			
-			bool do_escape = false;
-			
-			for (int i = 0; i < key.Length; i++) {
-				if (escape_chars.IndexOf (key [i]) > 0) {
-					do_escape = true;
-					break;
-				}
-				if (Char.IsWhiteSpace (key, i)) {
-					do_escape = true;
-					break;
-				}	
-			}
-			
-			if (do_escape)
-				return String.Concat ('\"', key, '\"');
-			return key;
-		}
-		
-		public static DataDictionary FromHeader (string header)
-		{
-			int eq_idx = -1;
-			int key_idx = 0;
-			DataDictionary dict = new DataDictionary ();
+    public class HttpCookie
+    {
+        private static string escape_chars = "';,=";
+        private readonly Dictionary<string, string> values;
 
-			for (int i = 0; i < header.Length; i++) {
-				if (header [i] == ';') {
-					if (eq_idx == -1)
-						continue;
-					string key = header.Substring (key_idx, eq_idx - key_idx);
-					string value = header.Substring (eq_idx + 1, i - eq_idx - 1);
-					
-					dict.Set (key.Trim (), value.Trim ());
-					
-					key_idx = i + 1;
-					eq_idx = -1;
-					continue;
-				}
-				
-				if (header [i] == '=')
-					eq_idx = i;
-			}
-			
-			if (eq_idx != -1) {
-				string key = header.Substring (key_idx, eq_idx - key_idx);
-				string value = header.Substring (eq_idx + 1);
-					
-				dict.Set (key.Trim (), value.Trim ());
-			}
-			
-			return dict;
-		}	
-	}
+        public HttpCookie(string name, string value)
+        {
+            if (name == null)
+                throw new ArgumentNullException("name");
+            if (value == null)
+                throw new ArgumentNullException("value");
+
+            values = new Dictionary<string, string>();
+            values.Add(name, value);
+        }
+
+        public Dictionary<string, string> Values
+        {
+            get { return values; }
+        }
+
+        public string Domain { get; set; }
+
+        public string Path { get; set; }
+
+        public DateTime Expires { get; set; }
+
+        public bool Secure { get; set; }
+
+        public bool HttpOnly { get; set; }
+
+        public void WriteHeader(IHttpResponse response)
+        {
+            // TODO: Eventually I'd like to make this write as it goes instead of
+            // buffering into a stream, but I need to create the ResponseStream
+            // type first.
+            response.Write(ToHeaderString());
+        }
+
+        public string ToHeaderString()
+        {
+            var builder = new StringBuilder();
+
+            builder.Append("Set-Cookie: ");
+
+            bool first = true;
+            foreach (var kv in Values)
+            {
+                if (!first)
+                    builder.Append("; ");
+                first = false;
+                builder.Append(EscapeStr(kv.Key));
+                builder.Append("=");
+                builder.Append(EscapeStr(kv.Value));
+            }
+
+            if (Domain != null)
+            {
+                builder.Append("; domain=");
+                builder.Append(EscapeStr(Domain));
+            }
+
+            if (Path != null)
+            {
+                builder.Append("; path=");
+                builder.Append(EscapeStr(Path));
+            }
+
+            if (Expires != DateTime.MinValue)
+            {
+                builder.Append("; expires=");
+                builder.Append(Expires.ToUniversalTime().ToString("r"));
+            }
+
+            if (Secure)
+            {
+                builder.Append("; secure");
+            }
+
+            if (HttpOnly)
+            {
+                builder.Append("; HttpOnly");
+            }
+
+            builder.Append("\r\n");
+
+            return builder.ToString();
+        }
+
+        public string ToJsString()
+        {
+            return null;
+        }
+
+        public static string EscapeStr(string key)
+        {
+            // TODO: UrlEncode
+
+            bool do_escape = false;
+
+            for (int i = 0; i < key.Length; i++)
+            {
+                if (escape_chars.IndexOf(key[i]) > 0)
+                {
+                    do_escape = true;
+                    break;
+                }
+                if (Char.IsWhiteSpace(key, i))
+                {
+                    do_escape = true;
+                    break;
+                }
+            }
+
+            if (do_escape)
+                return String.Concat('\"', key, '\"');
+            return key;
+        }
+
+        public static DataDictionary FromHeader(string header)
+        {
+            int eq_idx = -1;
+            int key_idx = 0;
+            var dict = new DataDictionary();
+
+            for (int i = 0; i < header.Length; i++)
+            {
+                if (header[i] == ';')
+                {
+                    if (eq_idx == -1)
+                        continue;
+                    string key = header.Substring(key_idx, eq_idx - key_idx);
+                    string value = header.Substring(eq_idx + 1, i - eq_idx - 1);
+
+                    dict.Set(key.Trim(), value.Trim());
+
+                    key_idx = i + 1;
+                    eq_idx = -1;
+                    continue;
+                }
+
+                if (header[i] == '=')
+                    eq_idx = i;
+            }
+
+            if (eq_idx != -1)
+            {
+                string key = header.Substring(key_idx, eq_idx - key_idx);
+                string value = header.Substring(eq_idx + 1);
+
+                dict.Set(key.Trim(), value.Trim());
+            }
+
+            return dict;
+        }
+    }
 }
-

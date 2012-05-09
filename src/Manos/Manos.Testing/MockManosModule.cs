@@ -23,15 +23,9 @@
 //
 
 
-using System;
-
-using Manos;
-
-
 namespace Manos.Testing
 {
-	public class MockManosModule : ManosModule
-	{
-
-	}
+    public class MockManosModule : ManosModule
+    {
+    }
 }

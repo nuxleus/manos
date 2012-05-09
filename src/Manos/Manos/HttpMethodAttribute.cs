@@ -24,47 +24,31 @@
 
 
 using System;
-using System.Reflection;
-
 using Manos.Http;
 using Manos.Routing;
 
-namespace Manos {
+namespace Manos
+{
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public abstract class HttpMethodAttribute : Attribute
+    {
+        public HttpMethodAttribute()
+        {
+            MatchType = MatchType.String;
+        }
 
-	[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-	public abstract class HttpMethodAttribute : Attribute {
+        public HttpMethodAttribute(string[] patterns)
+        {
+            Patterns = patterns;
+            MatchType = MatchType.String;
+        }
 
-		public HttpMethodAttribute ()
-		{
-			MatchType = MatchType.String;
-		}
+        public string Name { get; set; }
 
-		public HttpMethodAttribute (string[] patterns)
-		{
-			Patterns = patterns;
-			MatchType = MatchType.String;
-		}
+        public HttpMethod[] Methods { get; protected set; }
 
-		public string Name {
-			get;
-			set;
-		}
+        public string[] Patterns { get; private set; }
 
-		public HttpMethod [] Methods {
-			get;
-			protected set;
-		}
-
-		public string [] Patterns {
-			get;
-			private set;
-		}
-
-		public MatchType MatchType {
-			get;
-			set;
-		}
-	}
+        public MatchType MatchType { get; set; }
+    }
 }
-
-

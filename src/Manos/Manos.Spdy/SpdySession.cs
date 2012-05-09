@@ -1,60 +1,56 @@
 using System;
-using System.Text;
-using System.Collections.Generic;
-
 using Manos.IO;
-using Manos.IO.Managed;
 
 namespace Manos.Spdy
 {
     public class SpdySession
     {
-        private ITcpSocket socket;
-        private SpdyConnectionCallback callback;
-        private SPDYParser parser;
-        private int laststreamid;
-        public InflatingZlibContext Inflate;
+        private readonly SpdyConnectionCallback callback;
+        private readonly SPDYParser parser;
+        private readonly ITcpSocket socket;
         public DeflatingZlibContext Deflate;
-
-        public Context Context { get; set; }
+        public InflatingZlibContext Inflate;
+        private int laststreamid;
 
         public SpdySession(Context context, ITcpSocket sock, SpdyConnectionCallback cb)
         {
-            this.socket = sock;
-            this.callback = cb;
-            this.Inflate = new InflatingZlibContext();
-            this.Deflate = new DeflatingZlibContext();
-            this.Context = context;
-            this.parser = new SPDYParser(this.Inflate);
+            socket = sock;
+            callback = cb;
+            Inflate = new InflatingZlibContext();
+            Deflate = new DeflatingZlibContext();
+            Context = context;
+            parser = new SPDYParser(Inflate);
             parser.OnSynStream += HandleSynStream;
             parser.OnRstStream += HandleRstStream;
             parser.OnPing += HandlePing;
-            this.socket.GetSocketStream().Read(onData, onError, onEndOfStream);
+            socket.GetSocketStream().Read(onData, onError, onEndOfStream);
         }
 
-        void HandlePing(PingFrame packet)
+        public Context Context { get; set; }
+
+        private void HandlePing(PingFrame packet)
         {
-            this.socket.GetSocketStream().Write(packet.Serialize());
+            socket.GetSocketStream().Write(packet.Serialize());
         }
 
-        void HandleRstStream(RstStreamFrame packet)
+        private void HandleRstStream(RstStreamFrame packet)
         {
-            this.socket.Close();
+            socket.Close();
         }
 
-        void HandleSynStream(SynStreamFrame packet)
+        private void HandleSynStream(SynStreamFrame packet)
         {
             if (packet.StreamID < laststreamid)
             {
-                RstStreamFrame rst = new RstStreamFrame();
+                var rst = new RstStreamFrame();
                 rst.StreamID = packet.StreamID;
                 rst.StatusCode = RstStreamStatusCode.PROTOCOL_ERROR;
-                this.socket.GetSocketStream().Write(rst.Serialize());
-                this.socket.Close();
+                socket.GetSocketStream().Write(rst.Serialize());
+                socket.Close();
                 return;
             }
-            this.laststreamid = packet.StreamID;
-            var t = new SpdyTransaction(Context, packet, parser, new SpdyStream(socket, this.Deflate), callback);
+            laststreamid = packet.StreamID;
+            var t = new SpdyTransaction(Context, packet, parser, new SpdyStream(socket, Deflate), callback);
         }
 
         private void onData(ByteBuffer data)
@@ -71,4 +67,3 @@ namespace Manos.Spdy
         }
     }
 }
-

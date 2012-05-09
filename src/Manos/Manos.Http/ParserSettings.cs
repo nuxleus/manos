@@ -29,128 +29,130 @@
 //
 
 using System;
-using System.IO;
-
 using Manos.IO;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
+    public class ParserSettings
+    {
+        public HttpDataCallback OnBody;
+        public HttpErrorCallback OnError;
+        public HttpDataCallback OnFragment;
+        public HttpDataCallback OnHeaderField;
+        public HttpDataCallback OnHeaderValue;
+        public HttpCallback OnHeadersComplete;
+        public HttpCallback OnMessageBegin;
+        public HttpCallback OnMessageComplete;
+        public HttpDataCallback OnPath;
+        public HttpDataCallback OnQueryString;
+        public HttpDataCallback OnUrl;
 
 
-	public class ParserSettings {
-	
-		public HttpCallback       OnMessageBegin;
-		public HttpDataCallback   OnPath;
-		public HttpDataCallback   OnQueryString;
-		public HttpDataCallback   OnUrl;
-		public HttpDataCallback   OnFragment;
-		public HttpDataCallback   OnHeaderField;
-		public HttpDataCallback   OnHeaderValue;
-		public HttpCallback       OnHeadersComplete;
-		public HttpDataCallback   OnBody;
-		public HttpCallback       OnMessageComplete;
-		public HttpErrorCallback  OnError;
+        public void RaiseOnMessageBegin(HttpParser p)
+        {
+            Raise(OnMessageBegin, p);
+        }
+
+        public void RaiseOnMessageComplete(HttpParser p)
+        {
+            Raise(OnMessageComplete, p);
+        }
+
+        // this one is a little bit different:
+        // the current `position` of the buffer is the location of the
+        // error, `ini_pos` indicates where the position of
+        // the buffer when it was passed to the `execute` method of the parser, i.e.
+        // using this information and `limit` we'll know all the valid data
+        // in the buffer around the error we can use to print pretty error
+        // messages.
+
+        public void RaiseOnError(HttpParser p, string message, ByteBuffer buf, int ini_pos)
+        {
+            if (null != OnError)
+                OnError(p, message, buf, ini_pos);
 
 
-		public void RaiseOnMessageBegin (HttpParser p)
-		{
-			Raise (OnMessageBegin, p);
-		}
+            // if on_error gets called it MUST throw an exception, else the parser 
+            // will attempt to continue parsing, which it can't because it's
+            // in an invalid state.
+            Console.WriteLine("ERROR: '{0}'", message);
+            throw new HttpException(message);
+        }
 
-		public void RaiseOnMessageComplete (HttpParser p)
-		{
-			Raise (OnMessageComplete, p);
-		}
-  
-		// this one is a little bit different:
-		// the current `position` of the buffer is the location of the
-		// error, `ini_pos` indicates where the position of
-		// the buffer when it was passed to the `execute` method of the parser, i.e.
-		// using this information and `limit` we'll know all the valid data
-		// in the buffer around the error we can use to print pretty error
-		// messages.
+        public void RaiseOnHeaderField(HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            Raise(OnHeaderField, p, buf, pos, len);
+        }
 
-		public void RaiseOnError (HttpParser p, string message, ByteBuffer buf, int ini_pos)
-		{
-			if (null != OnError)
-				OnError (p, message, buf, ini_pos);
+        public void RaiseOnQueryString(HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            Raise(OnQueryString, p, buf, pos, len);
+        }
 
-			
-			// if on_error gets called it MUST throw an exception, else the parser 
-			// will attempt to continue parsing, which it can't because it's
-			// in an invalid state.
-			Console.WriteLine ("ERROR: '{0}'", message);
-			throw new HttpException (message);
-		}
+        public void RaiseOnFragment(HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            Raise(OnFragment, p, buf, pos, len);
+        }
 
-		public void RaiseOnHeaderField (HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			Raise (OnHeaderField, p, buf, pos, len);
-		}
+        public void RaiseOnPath(HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            Raise(OnPath, p, buf, pos, len);
+        }
 
-		public void RaiseOnQueryString (HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			Raise (OnQueryString, p, buf, pos, len);
-		}
+        public void RaiseOnHeaderValue(HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            Raise(OnHeaderValue, p, buf, pos, len);
+        }
 
-		public void RaiseOnFragment (HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			Raise (OnFragment, p, buf, pos, len);
-		}
+        public void RaiseOnUrl(HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            Raise(OnUrl, p, buf, pos, len);
+        }
 
-		public void RaiseOnPath (HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			Raise (OnPath, p, buf, pos, len);
-		}
+        public void RaiseOnBody(HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            Raise(OnBody, p, buf, pos, len);
+        }
 
-		public void RaiseOnHeaderValue (HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			Raise (OnHeaderValue, p, buf, pos, len);
-		}
+        public int RaiseOnHeadersComplete(HttpParser p)
+        {
+            return Raise(OnHeadersComplete, p);
+        }
 
-		public void RaiseOnUrl (HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			Raise (OnUrl, p, buf, pos, len);
-		}
+        private int Raise(HttpCallback cb, HttpParser p)
+        {
+            if (cb == null)
+                return 0;
 
-		public void RaiseOnBody(HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			Raise (OnBody, p, buf, pos, len);
-		}
+            try
+            {
+                return cb(p);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
 
-		public int RaiseOnHeadersComplete (HttpParser p)
-		{
-			return Raise (OnHeadersComplete, p);
-		}
+                RaiseOnError(p, e.Message, null, -1);
+                return -1;
+            }
+        }
 
-		private int Raise (HttpCallback cb, HttpParser p)
-		{
-			if (cb == null)
-				return 0;
+        private int Raise(HttpDataCallback cb, HttpParser p, ByteBuffer buf, int pos, int len)
+        {
+            if (cb == null || pos == -1)
+                return 0;
 
-			try {
-				return cb (p);
-			} catch (Exception e) {
-				Console.WriteLine (e);
+            try
+            {
+                return cb(p, buf, pos, len);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine(e);
 
-				RaiseOnError (p, e.Message, null, -1);
-				return -1;
-			}
-		}
-
-		private int Raise (HttpDataCallback cb, HttpParser p, ByteBuffer buf, int pos, int len)
-		{
-			if (cb == null || pos == -1)
-				return 0;
-
-			try {
-				return cb (p,buf,pos,len);
-			} catch (Exception e) {
-				Console.WriteLine (e);
-
-				RaiseOnError (p, e.Message, buf, pos);
-				return -1;
-			}
-				
-		}
-	}
+                RaiseOnError(p, e.Message, buf, pos);
+                return -1;
+            }
+        }
+    }
 }

@@ -22,11 +22,7 @@
 //
 //
 
-using System;
-
-
 namespace Manos.Caching
 {
-	public delegate void CacheOpCallback ();
+    public delegate void CacheOpCallback();
 }
-

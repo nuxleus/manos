@@ -23,33 +23,23 @@
 //
 
 
-
-
-using System;
-
 using Manos.Http;
-using Manos.Routing;
 
-namespace Manos {
-	
-	/// <summary>
-	/// The entry point for your manos app. Derive from this class one time in your manos app and it will get instantiated when the runtime executes.
-	/// </summary>
-	/// <remarks>
-	/// This is similar in concept to the HttpApplication in the ASP.Net stack.
-	/// </remarks>
-	public class ManosApp : ManosModule {
-		
-		public ManosApp ()
-		{
-		}
+namespace Manos
+{
+    /// <summary>
+    /// The entry point for your manos app. Derive from this class one time in your manos app and it will get instantiated when the runtime executes.
+    /// </summary>
+    /// <remarks>
+    /// This is similar in concept to the HttpApplication in the ASP.Net stack.
+    /// </remarks>
+    public class ManosApp : ManosModule
+    {
+        public void HandleTransaction(ManosApp app, IHttpTransaction con)
+        {
+            var pipeline = new Pipeline(app, con);
 
-		public void HandleTransaction (ManosApp app, IHttpTransaction con)
-		{
-			Pipeline pipeline = new Pipeline (app, con);
-
-			pipeline.Begin ();
-		}
-	}
+            pipeline.Begin();
+        }
+    }
 }
-

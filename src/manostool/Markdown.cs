@@ -109,13 +109,11 @@ software, even if advised of the possibility of such damage.
 
 using System;
 using System.Collections.Generic;
-using System.Configuration;
 using System.Text;
 using System.Text.RegularExpressions;
 
 namespace MarkdownSharp
 {
-
     public class MarkdownOptions
     {
         /// <summary>
@@ -123,25 +121,30 @@ namespace MarkdownSharp
         /// WARNING: this is a significant deviation from the markdown spec
         /// </summary>
         public bool AutoHyperlink { get; set; }
+
         /// <summary>
         /// when true, RETURN becomes a literal newline  
         /// WARNING: this is a significant deviation from the markdown spec
         /// </summary>
         public bool AutoNewlines { get; set; }
+
         /// <summary>
         /// use ">" for HTML output, or " />" for XHTML output
         /// </summary>
         public string EmptyElementSuffix { get; set; }
+
         /// <summary>
         /// when true, problematic URL characters like [, ], (, and so forth will be encoded 
         /// WARNING: this is a significant deviation from the markdown spec
         /// </summary>
         public bool EncodeProblemUrlCharacters { get; set; }
+
         /// <summary>
         /// when false, email addresses will never be auto-linked  
         /// WARNING: this is a significant deviation from the markdown spec
         /// </summary>
         public bool LinkEmails { get; set; }
+
         /// <summary>
         /// when true, bold and italic require non-word characters on either side  
         /// WARNING: this is a significant deviation from the markdown spec
@@ -159,7 +162,299 @@ namespace MarkdownSharp
     {
         private const string _version = "1.13";
 
+        /// <summary>
+        /// maximum nested depth of [] and () supported by the transform; implementation detail
+        /// </summary>
+        private const int _nestDepth = 6;
+
+        /// <summary>
+        /// Tabs are automatically converted to spaces as part of the transform  
+        /// this constant determines how "wide" those tabs become in spaces  
+        /// </summary>
+        private const int _tabWidth = 4;
+
+        private const string _markerUL = @"[*+-]";
+        private const string _markerOL = @"\d+[.]";
+
+        private static readonly Dictionary<string, string> _escapeTable;
+        private static readonly Dictionary<string, string> _invertedEscapeTable;
+        private static readonly Dictionary<string, string> _backslashEscapeTable;
+        private static readonly Regex _newlinesLeadingTrailing = new Regex(@"^\n+|\n+\z", RegexOptions.Compiled);
+        private static readonly Regex _newlinesMultiple = new Regex(@"\n{2,}", RegexOptions.Compiled);
+        private static readonly Regex _leadingWhitespace = new Regex(@"^[ ]*", RegexOptions.Compiled);
+        private static string _nestedBracketsPattern;
+        private static string _nestedParensPattern;
+
+        private static readonly Regex _linkDef =
+            new Regex(
+                string.Format(
+                    @"
+                        ^[ ]{{0,{0}}}\[(.+)\]:  # id = $1
+                          [ ]*
+                          \n?                   # maybe *one* newline
+                          [ ]*
+                        <?(\S+?)>?              # url = $2
+                          [ ]*
+                          \n?                   # maybe one newline
+                          [ ]*
+                        (?:
+                            (?<=\s)             # lookbehind for whitespace
+                            [""(]
+                            (.+?)               # title = $3
+                            ["")]
+                            [ ]*
+                        )?                      # title is optional
+                        (?:\n+|\Z)",
+                    _tabWidth - 1),
+                RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _blocksHtml = new Regex(GetBlockPattern(),
+                                                              RegexOptions.Multiline |
+                                                              RegexOptions.IgnorePatternWhitespace);
+
+        private static readonly Regex _htmlTokens =
+            new Regex(
+                @"
+            (<!(?:--.*?--\s*)+>)|        # match <!-- foo -->
+            (<\?.*?\?>)|                 # match <?foo?> " +
+                RepeatString(@" 
+            (<[A-Za-z\/!$](?:[^<>]|", _nestDepth) + RepeatString(@")*>)", _nestDepth) +
+                " # match <tag> and </tag>",
+                RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.ExplicitCapture |
+                RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _anchorRef =
+            new Regex(
+                string.Format(
+                    @"
+            (                               # wrap whole match in $1
+                \[
+                    ({0})                   # link text = $2
+                \]
+
+                [ ]?                        # one optional space
+                (?:\n[ ]*)?                 # one optional newline followed by spaces
+
+                \[
+                    (.*?)                   # id = $3
+                \]
+            )",
+                    GetNestedBracketsPattern()),
+                RegexOptions.Singleline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _anchorInline =
+            new Regex(
+                string.Format(
+                    @"
+                (                           # wrap whole match in $1
+                    \[
+                        ({0})               # link text = $2
+                    \]
+                    \(                      # literal paren
+                        [ ]*
+                        ({1})               # href = $3
+                        [ ]*
+                        (                   # $4
+                        (['""])           # quote char = $5
+                        (.*?)               # title = $6
+                        \5                  # matching quote
+                        [ ]*                # ignore any spaces between closing quote and )
+                        )?                  # title is optional
+                    \)
+                )",
+                    GetNestedBracketsPattern(), GetNestedParensPattern()),
+                RegexOptions.Singleline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _anchorRefShortcut =
+            new Regex(
+                @"
+            (                               # wrap whole match in $1
+              \[
+                 ([^\[\]]+)                 # link text = $2; can't contain [ or ]
+              \]
+            )",
+                RegexOptions.Singleline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _imagesRef =
+            new Regex(
+                @"
+                    (               # wrap whole match in $1
+                    !\[
+                        (.*?)       # alt text = $2
+                    \]
+
+                    [ ]?            # one optional space
+                    (?:\n[ ]*)?     # one optional newline followed by spaces
+
+                    \[
+                        (.*?)       # id = $3
+                    \]
+
+                    )",
+                RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        private static readonly Regex _imagesInline =
+            new Regex(
+                String.Format(
+                    @"
+              (                     # wrap whole match in $1
+                !\[
+                    (.*?)           # alt text = $2
+                \]
+                \s?                 # one optional whitespace character
+                \(                  # literal paren
+                    [ ]*
+                    ({0})           # href = $3
+                    [ ]*
+                    (               # $4
+                    (['""])       # quote char = $5
+                    (.*?)           # title = $6
+                    \5              # matching quote
+                    [ ]*
+                    )?              # title is optional
+                \)
+              )",
+                    GetNestedParensPattern()),
+                RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        private static readonly Regex _headerSetext =
+            new Regex(
+                @"
+                ^(.+?)
+                [ ]*
+                \n
+                (=+|-+)     # $1 = string of ='s or -'s
+                [ ]*
+                \n+",
+                RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _headerAtx =
+            new Regex(
+                @"
+                ^(\#{1,6})  # $1 = string of #'s
+                [ ]*
+                (.+?)       # $2 = Header text
+                [ ]*
+                \#*         # optional closing #'s (not counted)
+                \n+",
+                RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _horizontalRules =
+            new Regex(
+                @"
+            ^[ ]{0,3}         # Leading space
+                ([-*_])       # $1: First marker
+                (?>           # Repeated marker group
+                    [ ]{0,2}  # Zero, one, or two spaces.
+                    \1        # Marker character
+                ){2,}         # Group repeated at least twice
+                [ ]*          # Trailing spaces
+                $             # End of line.
+            ",
+                RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly string _wholeList =
+            string.Format(
+                @"
+            (                               # $1 = whole list
+              (                             # $2
+                [ ]{{0,{1}}}
+                ({0})                       # $3 = first list item marker
+                [ ]+
+              )
+              (?s:.+?)
+              (                             # $4
+                  \z
+                |
+                  \n{{2,}}
+                  (?=\S)
+                  (?!                       # Negative lookahead for another list item marker
+                    [ ]*
+                    {0}[ ]+
+                  )
+              )
+            )",
+                string.Format("(?:{0}|{1})", _markerUL, _markerOL), _tabWidth - 1);
+
+        private static readonly Regex _listNested = new Regex(@"^" + _wholeList,
+                                                              RegexOptions.Multiline |
+                                                              RegexOptions.IgnorePatternWhitespace |
+                                                              RegexOptions.Compiled);
+
+        private static readonly Regex _listTopLevel = new Regex(@"(?:(?<=\n\n)|\A\n?)" + _wholeList,
+                                                                RegexOptions.Multiline |
+                                                                RegexOptions.IgnorePatternWhitespace |
+                                                                RegexOptions.Compiled);
+
+        private static readonly Regex _codeBlock =
+            new Regex(
+                string.Format(
+                    @"
+                    (?:\n\n|\A\n?)
+                    (                        # $1 = the code block -- one or more lines, starting with a space
+                    (?:
+                        (?:[ ]{{{0}}})       # Lines must start with a tab-width of spaces
+                        .*\n+
+                    )+
+                    )
+                    ((?=^[ ]{{0,{0}}}\S)|\Z) # Lookahead for non-space at line-start, or end of doc",
+                    _tabWidth), RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
+
+        private static readonly Regex _codeSpan =
+            new Regex(
+                @"
+                    (?<!\\)   # Character before opening ` can't be a backslash
+                    (`+)      # $1 = Opening run of `
+                    (.+?)     # $2 = The code block
+                    (?<!`)
+                    \1
+                    (?!`)",
+                RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        private static readonly Regex _bold = new Regex(@"(\*\*|__) (?=\S) (.+?[*_]*) (?<=\S) \1",
+                                                        RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline |
+                                                        RegexOptions.Compiled);
+
+        private static readonly Regex _strictBold =
+            new Regex(@"([\W_]|^) (\*\*|__) (?=\S) ([^\r]*?\S[\*_]*) \2 ([\W_]|$)",
+                      RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
+
+        private static readonly Regex _italic = new Regex(@"(\*|_) (?=\S) (.+?) (?<=\S) \1",
+                                                          RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline |
+                                                          RegexOptions.Compiled);
+
+        private static readonly Regex _strictItalic = new Regex(@"([\W_]|^) (\*|_) (?=\S) ([^\r\*_]*?\S) \2 ([\W_]|$)",
+                                                                RegexOptions.IgnorePatternWhitespace |
+                                                                RegexOptions.Singleline | RegexOptions.Compiled);
+
+        private static readonly Regex _blockquote =
+            new Regex(
+                @"
+            (                           # Wrap whole match in $1
+                (
+                ^[ ]*>[ ]?              # '>' at the start of a line
+                    .+\n                # rest of the first line
+                (.+\n)*                 # subsequent consecutive lines
+                \n*                     # blanks
+                )+
+            )",
+                RegexOptions.IgnorePatternWhitespace | RegexOptions.Multiline | RegexOptions.Compiled);
+
+        private static readonly Regex _autolinkBare =
+            new Regex(@"(^|\s)(https?|ftp)(://[-A-Z0-9+&@#/%?=~_|\[\]\(\)!:,\.;]*[-A-Z0-9+&@#/%=~_|\[\]])($|\W)",
+                      RegexOptions.IgnoreCase | RegexOptions.Compiled);
+
+        private static readonly Regex _outDent = new Regex(@"^[ ]{1," + _tabWidth + @"}",
+                                                           RegexOptions.Multiline | RegexOptions.Compiled);
+
         #region Constructors and Options
+
+        private bool _autoHyperlink;
+        private bool _autoNewlines;
+        private string _emptyElementSuffix = " />";
+        private bool _encodeProblemUrlCharacters;
+        private bool _linkEmails = true;
+        private bool _strictBoldItalic;
 
         /// <summary>
         /// Create a new Markdown instance using default options
@@ -182,7 +477,7 @@ namespace MarkdownSharp
         /// </summary>
         public Markdown(bool loadOptionsFromConfigFile)
         {
-		/*
+            /*
             if (!loadOptionsFromConfigFile) return;
 
             var settings = ConfigurationManager.AppSettings;
@@ -235,7 +530,6 @@ namespace MarkdownSharp
             get { return _emptyElementSuffix; }
             set { _emptyElementSuffix = value; }
         }
-        private string _emptyElementSuffix = " />";
 
         /// <summary>
         /// when false, email addresses will never be auto-linked  
@@ -246,7 +540,6 @@ namespace MarkdownSharp
             get { return _linkEmails; }
             set { _linkEmails = value; }
         }
-        private bool _linkEmails = true;
 
         /// <summary>
         /// when true, bold and italic require non-word characters on either side  
@@ -257,7 +550,6 @@ namespace MarkdownSharp
             get { return _strictBoldItalic; }
             set { _strictBoldItalic = value; }
         }
-        private bool _strictBoldItalic = false;
 
         /// <summary>
         /// when true, RETURN becomes a literal newline  
@@ -268,7 +560,6 @@ namespace MarkdownSharp
             get { return _autoNewlines; }
             set { _autoNewlines = value; }
         }
-        private bool _autoNewlines = false;
 
         /// <summary>
         /// when true, (most) bare plain URLs are auto-hyperlinked  
@@ -279,7 +570,6 @@ namespace MarkdownSharp
             get { return _autoHyperlink; }
             set { _autoHyperlink = value; }
         }
-        private bool _autoHyperlink = false;
 
         /// <summary>
         /// when true, problematic URL characters like [, ], (, and so forth will be encoded 
@@ -290,44 +580,12 @@ namespace MarkdownSharp
             get { return _encodeProblemUrlCharacters; }
             set { _encodeProblemUrlCharacters = value; }
         }
-        private bool _encodeProblemUrlCharacters = false;
 
         #endregion
 
-        private enum TokenType { Text, Tag }
-
-        private struct Token
-        {
-            public Token(TokenType type, string value)
-            {
-                this.Type = type;
-                this.Value = value;
-            }
-            public TokenType Type;
-            public string Value;
-        }
-
-        /// <summary>
-        /// maximum nested depth of [] and () supported by the transform; implementation detail
-        /// </summary>
-        private const int _nestDepth = 6;
-
-        /// <summary>
-        /// Tabs are automatically converted to spaces as part of the transform  
-        /// this constant determines how "wide" those tabs become in spaces  
-        /// </summary>
-        private const int _tabWidth = 4;
-
-        private const string _markerUL = @"[*+-]";
-        private const string _markerOL = @"\d+[.]";
-
-        private static readonly Dictionary<string, string> _escapeTable;
-        private static readonly Dictionary<string, string> _invertedEscapeTable;
-        private static readonly Dictionary<string, string> _backslashEscapeTable;        
-
-        private readonly Dictionary<string, string> _urls = new Dictionary<string, string>();
-        private readonly Dictionary<string, string> _titles = new Dictionary<string, string>();
         private readonly Dictionary<string, string> _htmlBlocks = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _titles = new Dictionary<string, string>();
+        private readonly Dictionary<string, string> _urls = new Dictionary<string, string>();
 
         private int _listLevel;
 
@@ -354,7 +612,8 @@ namespace MarkdownSharp
                 backslashPattern += Regex.Escape(@"\" + key) + "|";
             }
 
-            _backslashEscapes = new Regex(backslashPattern.Substring(0, backslashPattern.Length - 1), RegexOptions.Compiled);
+            _backslashEscapes = new Regex(backslashPattern.Substring(0, backslashPattern.Length - 1),
+                                          RegexOptions.Compiled);
         }
 
         /// <summary>
@@ -383,7 +642,7 @@ namespace MarkdownSharp
             Setup();
 
             text = Normalize(text);
-           
+
             text = HashHTMLBlocks(text);
             text = StripLinkDefinitions(text);
             text = RunBlockGamut(text);
@@ -442,10 +701,6 @@ namespace MarkdownSharp
             return text;
         }
 
-        private static Regex _newlinesLeadingTrailing = new Regex(@"^\n+|\n+\z", RegexOptions.Compiled);
-        private static Regex _newlinesMultiple = new Regex(@"\n{2,}", RegexOptions.Compiled);
-        private static Regex _leadingWhitespace = new Regex(@"^[ ]*", RegexOptions.Compiled);
-
         /// <summary>
         /// splits on two or more newlines, to form "paragraphs";    
         /// each paragraph is then unhashed (if it is a hash) or wrapped in HTML p tag
@@ -454,7 +709,7 @@ namespace MarkdownSharp
         {
             // split on two or more newlines
             string[] grafs = _newlinesMultiple.Split(_newlinesLeadingTrailing.Replace(text, ""));
-            
+
             for (int i = 0; i < grafs.Length; i++)
             {
                 if (grafs[i].StartsWith("\x1A"))
@@ -490,8 +745,6 @@ namespace MarkdownSharp
             Setup();
         }
 
-        private static string _nestedBracketsPattern;
-
         /// <summary>
         /// Reusable pattern to match balanced [brackets]. See Friedl's 
         /// "Mastering Regular Expressions", 2nd Ed., pp. 328-331.
@@ -502,19 +755,19 @@ namespace MarkdownSharp
             // up to _nestDepth
             if (_nestedBracketsPattern == null)
                 _nestedBracketsPattern =
-                    RepeatString(@"
+                    RepeatString(
+                        @"
                     (?>              # Atomic matching
                        [^\[\]]+      # Anything other than brackets
                      |
                        \[
-                           ", _nestDepth) + RepeatString(
-                    @" \]
+                           ",
+                        _nestDepth) + RepeatString(
+                            @" \]
                     )*"
-                    , _nestDepth);
+                            , _nestDepth);
             return _nestedBracketsPattern;
         }
-
-        private static string _nestedParensPattern;
 
         /// <summary>
         /// Reusable pattern to match balanced (parens). See Friedl's 
@@ -526,35 +779,19 @@ namespace MarkdownSharp
             // up to _nestDepth
             if (_nestedParensPattern == null)
                 _nestedParensPattern =
-                    RepeatString(@"
+                    RepeatString(
+                        @"
                     (?>              # Atomic matching
                        [^()\s]+      # Anything other than parens or whitespace
                      |
                        \(
-                           ", _nestDepth) + RepeatString(
-                    @" \)
+                           ",
+                        _nestDepth) + RepeatString(
+                            @" \)
                     )*"
-                    , _nestDepth);
+                            , _nestDepth);
             return _nestedParensPattern;
         }
-
-        private static Regex _linkDef = new Regex(string.Format(@"
-                        ^[ ]{{0,{0}}}\[(.+)\]:  # id = $1
-                          [ ]*
-                          \n?                   # maybe *one* newline
-                          [ ]*
-                        <?(\S+?)>?              # url = $2
-                          [ ]*
-                          \n?                   # maybe one newline
-                          [ ]*
-                        (?:
-                            (?<=\s)             # lookbehind for whitespace
-                            [""(]
-                            (.+?)               # title = $3
-                            ["")]
-                            [ ]*
-                        )?                      # title is optional
-                        (?:\n+|\Z)", _tabWidth - 1), RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
 
         /// <summary>
         /// Strips link definitions from text, stores the URLs and titles in hash references.
@@ -579,7 +816,6 @@ namespace MarkdownSharp
         }
 
         // compiling this monster regex results in worse performance. trust me.
-        private static Regex _blocksHtml = new Regex(GetBlockPattern(), RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace);
 
 
         /// <summary>
@@ -587,7 +823,6 @@ namespace MarkdownSharp
         /// </summary>
         private static string GetBlockPattern()
         {
-
             // Hashify HTML blocks:
             // We only want to do this for block-level HTML tags, such as headers,
             // lists, and tables. That's because we still want to wrap <p>s around
@@ -602,10 +837,12 @@ namespace MarkdownSharp
             // *  List "b" is made of tags which are always block-level;
             //
             string blockTagsA = "ins|del";
-            string blockTagsB = "p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|address|script|noscript|form|fieldset|iframe|math";
+            string blockTagsB =
+                "p|div|h[1-6]|blockquote|pre|table|dl|ol|ul|address|script|noscript|form|fieldset|iframe|math";
 
             // Regular expression for the content of a block tag.
-            string attr = @"
+            string attr =
+                @"
             (?>                                     # optional tag attributes
               \s                                    # starts with whitespace
               (?>
@@ -620,24 +857,31 @@ namespace MarkdownSharp
             )?  
             ";
 
-            string content = RepeatString(@"
+            string content =
+                RepeatString(
+                    @"
                 (?>
                   [^<]+                         # content without tag
                 |
                   <\2                           # nested opening tag
-                    " + attr + @"       # attributes
+                    " +
+                    attr +
+                    @"       # attributes
                   (?>
                       />
                   |
-                      >", _nestDepth) +   // end of opening tag
-                      ".*?" +             // last level nested tag content
-            RepeatString(@"
+                      >",
+                    _nestDepth) + // end of opening tag
+                ".*?" + // last level nested tag content
+                RepeatString(
+                    @"
                       </\2\s*>          # closing nested tag
                   )
                   |                             
                   <(?!/\2\s*>           # other tags with a different name
                   )
-                )*", _nestDepth);
+                )*",
+                    _nestDepth);
 
             string content2 = content.Replace(@"\2", @"\3");
 
@@ -652,7 +896,8 @@ namespace MarkdownSharp
             // the inner nested divs must be indented.
             // We need to do this before the next, more liberal match, because the next
             // match will start at the first `<div>` and stop at the first `</div>`.
-            string pattern = @"
+            string pattern =
+                @"
             (?>
                   (?>
                     (?<=\n)     # Starting after a blank line
@@ -744,16 +989,8 @@ namespace MarkdownSharp
 
         private static string GetHashKey(string s)
         {
-            return "\x1A" + Math.Abs(s.GetHashCode()).ToString() + "\x1A";
+            return "\x1A" + Math.Abs(s.GetHashCode()) + "\x1A";
         }
-
-        private static Regex _htmlTokens = new Regex(@"
-            (<!(?:--.*?--\s*)+>)|        # match <!-- foo -->
-            (<\?.*?\?>)|                 # match <?foo?> " +
-            RepeatString(@" 
-            (<[A-Za-z\/!$](?:[^<>]|", _nestDepth) + RepeatString(@")*>)", _nestDepth) +
-                                       " # match <tag> and </tag>",
-            RegexOptions.Multiline | RegexOptions.Singleline | RegexOptions.ExplicitCapture | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
 
         /// <summary>
         /// returns an array of HTML tokens comprising the input string. Each token is 
@@ -787,46 +1024,6 @@ namespace MarkdownSharp
             return tokens;
         }
 
-
-        private static Regex _anchorRef = new Regex(string.Format(@"
-            (                               # wrap whole match in $1
-                \[
-                    ({0})                   # link text = $2
-                \]
-
-                [ ]?                        # one optional space
-                (?:\n[ ]*)?                 # one optional newline followed by spaces
-
-                \[
-                    (.*?)                   # id = $3
-                \]
-            )", GetNestedBracketsPattern()), RegexOptions.Singleline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
-
-        private static Regex _anchorInline = new Regex(string.Format(@"
-                (                           # wrap whole match in $1
-                    \[
-                        ({0})               # link text = $2
-                    \]
-                    \(                      # literal paren
-                        [ ]*
-                        ({1})               # href = $3
-                        [ ]*
-                        (                   # $4
-                        (['""])           # quote char = $5
-                        (.*?)               # title = $6
-                        \5                  # matching quote
-                        [ ]*                # ignore any spaces between closing quote and )
-                        )?                  # title is optional
-                    \)
-                )", GetNestedBracketsPattern(), GetNestedParensPattern()),
-                  RegexOptions.Singleline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
-
-        private static Regex _anchorRefShortcut = new Regex(@"
-            (                               # wrap whole match in $1
-              \[
-                 ([^\[\]]+)                 # link text = $2; can't contain [ or ]
-              \]
-            )", RegexOptions.Singleline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
 
         /// <summary>
         /// Turn Markdown link shortcuts into HTML anchor tags
@@ -868,7 +1065,7 @@ namespace MarkdownSharp
                 string url = _urls[linkID];
 
                 url = EncodeProblemUrlChars(url);
-                url = EscapeBoldItalic(url);                
+                url = EscapeBoldItalic(url);
                 result = "<a href=\"" + url + "\"";
 
                 if (_titles.ContainsKey(linkID))
@@ -890,7 +1087,8 @@ namespace MarkdownSharp
         {
             string wholeMatch = match.Groups[1].Value;
             string linkText = match.Groups[2].Value;
-            string linkID = Regex.Replace(linkText.ToLowerInvariant(), @"[ ]*\n[ ]*", " ");  // lower case and remove newlines / extra spaces
+            string linkID = Regex.Replace(linkText.ToLowerInvariant(), @"[ ]*\n[ ]*", " ");
+                // lower case and remove newlines / extra spaces
 
             string result;
 
@@ -899,7 +1097,7 @@ namespace MarkdownSharp
                 string url = _urls[linkID];
 
                 url = EncodeProblemUrlChars(url);
-                url = EscapeBoldItalic(url);                
+                url = EscapeBoldItalic(url);
                 result = "<a href=\"" + url + "\"";
 
                 if (_titles.ContainsKey(linkID))
@@ -943,41 +1141,6 @@ namespace MarkdownSharp
             return result;
         }
 
-        private static Regex _imagesRef = new Regex(@"
-                    (               # wrap whole match in $1
-                    !\[
-                        (.*?)       # alt text = $2
-                    \]
-
-                    [ ]?            # one optional space
-                    (?:\n[ ]*)?     # one optional newline followed by spaces
-
-                    \[
-                        (.*?)       # id = $3
-                    \]
-
-                    )", RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
-
-        private static Regex _imagesInline = new Regex(String.Format(@"
-              (                     # wrap whole match in $1
-                !\[
-                    (.*?)           # alt text = $2
-                \]
-                \s?                 # one optional whitespace character
-                \(                  # literal paren
-                    [ ]*
-                    ({0})           # href = $3
-                    [ ]*
-                    (               # $4
-                    (['""])       # quote char = $5
-                    (.*?)           # title = $6
-                    \5              # matching quote
-                    [ ]*
-                    )?              # title is optional
-                \)
-              )", GetNestedParensPattern()),
-                  RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
-
         /// <summary>
         /// Turn Markdown image shortcuts into HTML img tags. 
         /// </summary>
@@ -1014,7 +1177,7 @@ namespace MarkdownSharp
             {
                 string url = _urls[linkID];
                 url = EncodeProblemUrlChars(url);
-                url = EscapeBoldItalic(url);                
+                url = EscapeBoldItalic(url);
                 result = string.Format("<img src=\"{0}\" alt=\"{1}\"", url, altText);
 
                 if (_titles.ContainsKey(linkID))
@@ -1045,9 +1208,9 @@ namespace MarkdownSharp
 
             alt = alt.Replace("\"", "&quot;");
             title = title.Replace("\"", "&quot;");
-            
+
             if (url.StartsWith("<") && url.EndsWith(">"))
-                url = url.Substring(1, url.Length - 2);    // Remove <>'s surrounding URL, if present
+                url = url.Substring(1, url.Length - 2); // Remove <>'s surrounding URL, if present
             url = EncodeProblemUrlChars(url);
             url = EscapeBoldItalic(url);
 
@@ -1063,24 +1226,6 @@ namespace MarkdownSharp
 
             return result;
         }
-
-        private static Regex _headerSetext = new Regex(@"
-                ^(.+?)
-                [ ]*
-                \n
-                (=+|-+)     # $1 = string of ='s or -'s
-                [ ]*
-                \n+",
-            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
-
-        private static Regex _headerAtx = new Regex(@"
-                ^(\#{1,6})  # $1 = string of #'s
-                [ ]*
-                (.+?)       # $2 = Header text
-                [ ]*
-                \#*         # optional closing #'s (not counted)
-                \n+",
-            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
 
         /// <summary>
         /// Turn Markdown headers into HTML header tags
@@ -1120,17 +1265,6 @@ namespace MarkdownSharp
         }
 
 
-        private static Regex _horizontalRules = new Regex(@"
-            ^[ ]{0,3}         # Leading space
-                ([-*_])       # $1: First marker
-                (?>           # Repeated marker group
-                    [ ]{0,2}  # Zero, one, or two spaces.
-                    \1        # Marker character
-                ){2,}         # Group repeated at least twice
-                [ ]*          # Trailing spaces
-                $             # End of line.
-            ", RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
-
         /// <summary>
         /// Turn Markdown horizontal rules into HTML hr tags
         /// </summary>
@@ -1144,32 +1278,6 @@ namespace MarkdownSharp
         {
             return _horizontalRules.Replace(text, "<hr" + _emptyElementSuffix + "\n");
         }
-
-        private static string _wholeList = string.Format(@"
-            (                               # $1 = whole list
-              (                             # $2
-                [ ]{{0,{1}}}
-                ({0})                       # $3 = first list item marker
-                [ ]+
-              )
-              (?s:.+?)
-              (                             # $4
-                  \z
-                |
-                  \n{{2,}}
-                  (?=\S)
-                  (?!                       # Negative lookahead for another list item marker
-                    [ ]*
-                    {0}[ ]+
-                  )
-              )
-            )", string.Format("(?:{0}|{1})", _markerUL, _markerOL), _tabWidth - 1);
-
-        private static Regex _listNested = new Regex(@"^" + _wholeList,
-            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
-
-        private static Regex _listTopLevel = new Regex(@"(?:(?<=\n\n)|\A\n?)" + _wholeList,
-            RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
 
         /// <summary>
         /// Turn Markdown lists into HTML ul and ol and li tags
@@ -1234,15 +1342,16 @@ namespace MarkdownSharp
             list = Regex.Replace(list, @"\n{2,}\z", "\n");
 
             string pattern = string.Format(
-              @"(\n)?                      # leading line = $1
+                @"(\n)?                      # leading line = $1
                 (^[ ]*)                    # leading whitespace = $2
                 ({0}) [ ]+                 # list marker = $3
                 ((?s:.+?)                  # list item text = $4
                 (\n{{1,2}}))      
-                (?= \n* (\z | \2 ({0}) [ ]+))", marker);
+                (?= \n* (\z | \2 ({0}) [ ]+))",
+                marker);
 
             list = Regex.Replace(list, pattern, new MatchEvaluator(ListItemEvaluator),
-                                  RegexOptions.IgnorePatternWhitespace | RegexOptions.Multiline);
+                                 RegexOptions.IgnorePatternWhitespace | RegexOptions.Multiline);
             _listLevel--;
             return list;
         }
@@ -1267,17 +1376,6 @@ namespace MarkdownSharp
         }
 
 
-        private static Regex _codeBlock = new Regex(string.Format(@"
-                    (?:\n\n|\A\n?)
-                    (                        # $1 = the code block -- one or more lines, starting with a space
-                    (?:
-                        (?:[ ]{{{0}}})       # Lines must start with a tab-width of spaces
-                        .*\n+
-                    )+
-                    )
-                    ((?=^[ ]{{0,{0}}}\S)|\Z) # Lookahead for non-space at line-start, or end of doc",
-                    _tabWidth), RegexOptions.Multiline | RegexOptions.IgnorePatternWhitespace | RegexOptions.Compiled);
-
         /// <summary>
         /// /// Turn Markdown 4-space indented code into HTML pre code blocks
         /// </summary>
@@ -1296,14 +1394,6 @@ namespace MarkdownSharp
 
             return string.Concat("\n\n<pre><code>", codeBlock, "\n</code></pre>\n\n");
         }
-
-        private static Regex _codeSpan = new Regex(@"
-                    (?<!\\)   # Character before opening ` can't be a backslash
-                    (`+)      # $1 = Opening run of `
-                    (.+?)     # $2 = The code block
-                    (?<!`)
-                    \1
-                    (?!`)", RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
 
         /// <summary>
         /// Turn Markdown `code spans` into HTML code tags
@@ -1346,22 +1436,11 @@ namespace MarkdownSharp
         }
 
 
-        private static Regex _bold = new Regex(@"(\*\*|__) (?=\S) (.+?[*_]*) (?<=\S) \1",
-            RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
-        private static Regex _strictBold = new Regex(@"([\W_]|^) (\*\*|__) (?=\S) ([^\r]*?\S[\*_]*) \2 ([\W_]|$)",
-            RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
-
-        private static Regex _italic = new Regex(@"(\*|_) (?=\S) (.+?) (?<=\S) \1",
-            RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
-        private static Regex _strictItalic = new Regex(@"([\W_]|^) (\*|_) (?=\S) ([^\r\*_]*?\S) \2 ([\W_]|$)",
-            RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline | RegexOptions.Compiled);
-
         /// <summary>
         /// Turn Markdown *italics* and **bold** into HTML strong and em tags
         /// </summary>
         private string DoItalicsAndBold(string text)
         {
-
             // <strong> must go first, then <em>
             if (_strictBoldItalic)
             {
@@ -1388,16 +1467,6 @@ namespace MarkdownSharp
             return text;
         }
 
-        private static Regex _blockquote = new Regex(@"
-            (                           # Wrap whole match in $1
-                (
-                ^[ ]*>[ ]?              # '>' at the start of a line
-                    .+\n                # rest of the first line
-                (.+\n)*                 # subsequent consecutive lines
-                \n*                     # blanks
-                )+
-            )", RegexOptions.IgnorePatternWhitespace | RegexOptions.Multiline | RegexOptions.Compiled);
-
         /// <summary>
         /// Turn Markdown > quoted blocks into HTML blockquote blocks
         /// </summary>
@@ -1410,14 +1479,15 @@ namespace MarkdownSharp
         {
             string bq = match.Groups[1].Value;
 
-            bq = Regex.Replace(bq, @"^[ ]*>[ ]?", "", RegexOptions.Multiline);       // trim one level of quoting
-            bq = Regex.Replace(bq, @"^[ ]+$", "", RegexOptions.Multiline);           // trim whitespace-only lines
-            bq = RunBlockGamut(bq);                                                  // recurse
+            bq = Regex.Replace(bq, @"^[ ]*>[ ]?", "", RegexOptions.Multiline); // trim one level of quoting
+            bq = Regex.Replace(bq, @"^[ ]+$", "", RegexOptions.Multiline); // trim whitespace-only lines
+            bq = RunBlockGamut(bq); // recurse
 
             bq = Regex.Replace(bq, @"^", "  ", RegexOptions.Multiline);
 
             // These leading spaces screw with <pre> content, so we need to fix that:
-            bq = Regex.Replace(bq, @"(\s*<pre>.+?</pre>)", new MatchEvaluator(BlockQuoteEvaluator2), RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline);
+            bq = Regex.Replace(bq, @"(\s*<pre>.+?</pre>)", new MatchEvaluator(BlockQuoteEvaluator2),
+                               RegexOptions.IgnorePatternWhitespace | RegexOptions.Singleline);
 
             return string.Format("<blockquote>\n{0}\n</blockquote>\n\n", bq);
         }
@@ -1427,9 +1497,6 @@ namespace MarkdownSharp
             return Regex.Replace(match.Groups[1].Value, @"^  ", "", RegexOptions.Multiline);
         }
 
-        private static Regex _autolinkBare = new Regex(@"(^|\s)(https?|ftp)(://[-A-Z0-9+&@#/%?=~_|\[\]\(\)!:,\.;]*[-A-Z0-9+&@#/%=~_|\[\]])($|\W)",
-            RegexOptions.IgnoreCase | RegexOptions.Compiled);
-
         /// <summary>
         /// Turn angle-delimited URLs into HTML anchor tags
         /// </summary>
@@ -1438,7 +1505,6 @@ namespace MarkdownSharp
         /// </remarks>
         private string DoAutoLinks(string text)
         {
-
             if (_autoHyperlink)
             {
                 // fixup arbitrary URLs by adding Markdown < > so they get linked as well
@@ -1462,7 +1528,8 @@ namespace MarkdownSharp
                         [-a-z0-9]+(\.[-a-z0-9]+)*\.[a-z]+
                       )
                       >";
-                text = Regex.Replace(text, pattern, new MatchEvaluator(EmailEvaluator), RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
+                text = Regex.Replace(text, pattern, new MatchEvaluator(EmailEvaluator),
+                                     RegexOptions.IgnoreCase | RegexOptions.IgnorePatternWhitespace);
             }
 
             return text;
@@ -1505,8 +1572,6 @@ namespace MarkdownSharp
         }
 
 
-        private static Regex _outDent = new Regex(@"^[ ]{1," + _tabWidth + @"}", RegexOptions.Multiline | RegexOptions.Compiled);
-
         /// <summary>
         /// Remove one level of line-leading spaces
         /// </summary>
@@ -1515,9 +1580,31 @@ namespace MarkdownSharp
             return _outDent.Replace(block, "");
         }
 
+        /// <summary>
+        /// this is to emulate what's evailable in PHP
+        /// </summary>
+        private static string RepeatString(string text, int count)
+        {
+            var sb = new StringBuilder(text.Length*count);
+            for (int i = 0; i < count; i++)
+                sb.Append(text);
+            return sb.ToString();
+        }
 
         #region Encoding and Normalization
 
+        private static readonly Regex _codeEncoder = new Regex(@"&|<|>|\\|\*|_|\{|\}|\[|\]", RegexOptions.Compiled);
+
+
+        private static readonly Regex _amps = new Regex(@"&(?!(#[0-9]+)|(#[xX][a-fA-F0-9])|([a-zA-Z][a-zA-Z0-9]*);)",
+                                                        RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+
+        private static readonly Regex _angles = new Regex(@"<(?![A-Za-z/?\$!])",
+                                                          RegexOptions.ExplicitCapture | RegexOptions.Compiled);
+
+        private static readonly Regex _backslashEscapes;
+        private static readonly Regex _unescapes = new Regex("\x1A\\d+\x1A", RegexOptions.Compiled);
+        private static readonly char[] _problemUrlChars = @"""'*()[]$:".ToCharArray();
 
         /// <summary>
         /// encodes email address randomly  
@@ -1526,23 +1613,21 @@ namespace MarkdownSharp
         /// </summary>
         private string EncodeEmailAddress(string addr)
         {
-            var sb = new StringBuilder(addr.Length * 5);
+            var sb = new StringBuilder(addr.Length*5);
             var rand = new Random();
             int r;
             foreach (char c in addr)
             {
                 r = rand.Next(1, 100);
                 if ((r > 90 || c == ':') && c != '@')
-                    sb.Append(c);                         // m
+                    sb.Append(c); // m
                 else if (r < 45)
-                    sb.AppendFormat("&#x{0:x};", (int)c); // &#x6D
+                    sb.AppendFormat("&#x{0:x};", (int) c); // &#x6D
                 else
-                    sb.AppendFormat("&#{0};", (int)c);    // &#109
+                    sb.AppendFormat("&#{0};", (int) c); // &#109
             }
             return sb.ToString();
         }
-
-        private static Regex _codeEncoder = new Regex(@"&|<|>|\\|\*|_|\{|\}|\[|\]", RegexOptions.Compiled);
 
         /// <summary>
         /// Encode/escape certain Markdown characters inside code blocks and spans where they are literals
@@ -1551,28 +1636,25 @@ namespace MarkdownSharp
         {
             return _codeEncoder.Replace(code, EncodeCodeEvaluator);
         }
+
         private string EncodeCodeEvaluator(Match match)
         {
             switch (match.Value)
             {
-                // Encode all ampersands; HTML entities are not
-                // entities within a Markdown code span.
+                    // Encode all ampersands; HTML entities are not
+                    // entities within a Markdown code span.
                 case "&":
                     return "&amp;";
-                // Do the angle bracket song and dance
+                    // Do the angle bracket song and dance
                 case "<":
                     return "&lt;";
                 case ">":
                     return "&gt;";
-                // escape characters that are magic in Markdown
+                    // escape characters that are magic in Markdown
                 default:
                     return _escapeTable[match.Value];
             }
         }
-
-
-        private static Regex _amps = new Regex(@"&(?!(#[0-9]+)|(#[xX][a-fA-F0-9])|([a-zA-Z][a-zA-Z0-9]*);)", RegexOptions.ExplicitCapture | RegexOptions.Compiled);
-        private static Regex _angles = new Regex(@"<(?![A-Za-z/?\$!])", RegexOptions.ExplicitCapture | RegexOptions.Compiled);
 
         /// <summary>
         /// Encode any ampersands (that aren't part of an HTML entity) and left or right angle brackets
@@ -1584,8 +1666,6 @@ namespace MarkdownSharp
             return s;
         }
 
-        private static Regex _backslashEscapes; 
-
         /// <summary>
         /// Encodes any escaped characters such as \`, \*, \[ etc
         /// </summary>
@@ -1593,12 +1673,11 @@ namespace MarkdownSharp
         {
             return _backslashEscapes.Replace(s, new MatchEvaluator(EscapeBackslashesEvaluator));
         }
+
         private string EscapeBackslashesEvaluator(Match match)
         {
             return _backslashEscapeTable[match.Value];
         }
-       
-        private static Regex _unescapes = new Regex("\x1A\\d+\x1A", RegexOptions.Compiled);
 
         /// <summary>
         /// swap back in all the special characters we've hidden
@@ -1607,6 +1686,7 @@ namespace MarkdownSharp
         {
             return _unescapes.Replace(s, new MatchEvaluator(UnescapeEvaluator));
         }
+
         private string UnescapeEvaluator(Match match)
         {
             return _invertedEscapeTable[match.Value];
@@ -1622,8 +1702,6 @@ namespace MarkdownSharp
             s = s.Replace("_", _escapeTable["_"]);
             return s;
         }
-
-        private static char[] _problemUrlChars = @"""'*()[]$:".ToCharArray();
 
         /// <summary>
         /// hex-encodes some unusual "problem" chars in URLs to avoid URL detection problems 
@@ -1644,9 +1722,9 @@ namespace MarkdownSharp
                     encode = !(url[i + 1] == '/') && !(url[i + 1] >= '0' && url[i + 1] <= '9');
 
                 if (encode)
-                    sb.Append("%" + String.Format("{0:x}", (byte)c));
+                    sb.Append("%" + String.Format("{0:x}", (byte) c));
                 else
-                    sb.Append(c);                
+                    sb.Append(c);
             }
 
             return sb.ToString();
@@ -1662,12 +1740,12 @@ namespace MarkdownSharp
         /// </summary>
         private string EscapeSpecialCharsWithinTagAttributes(string text)
         {
-            var tokens = TokenizeHTML(text);
+            List<Token> tokens = TokenizeHTML(text);
 
             // now, rebuild text from the tokens
             var sb = new StringBuilder(text.Length);
 
-            foreach (var token in tokens)
+            foreach (Token token in tokens)
             {
                 string value = token.Value;
 
@@ -1691,7 +1769,7 @@ namespace MarkdownSharp
         /// removes any blank lines (only spaces) in the text
         /// </summary>
         private string Normalize(string text)
-        {            
+        {
             var output = new StringBuilder(text.Length);
             var line = new StringBuilder();
             bool valid = false;
@@ -1703,18 +1781,20 @@ namespace MarkdownSharp
                     case '\n':
                         if (valid) output.Append(line);
                         output.Append('\n');
-                        line.Length = 0; valid = false;
+                        line.Length = 0;
+                        valid = false;
                         break;
                     case '\r':
                         if ((i < text.Length - 1) && (text[i + 1] != '\n'))
                         {
                             if (valid) output.Append(line);
                             output.Append('\n');
-                            line.Length = 0; valid = false;
+                            line.Length = 0;
+                            valid = false;
                         }
                         break;
                     case '\t':
-                        int width = (_tabWidth - line.Length % _tabWidth);
+                        int width = (_tabWidth - line.Length%_tabWidth);
                         for (int k = 0; k < width; k++)
                             line.Append(' ');
                         break;
@@ -1736,16 +1816,30 @@ namespace MarkdownSharp
 
         #endregion
 
-        /// <summary>
-        /// this is to emulate what's evailable in PHP
-        /// </summary>
-        private static string RepeatString(string text, int count)
+        #region Nested type: Token
+
+        private struct Token
         {
-            var sb = new StringBuilder(text.Length * count);
-            for (int i = 0; i < count; i++)
-                sb.Append(text);
-            return sb.ToString();
+            public readonly TokenType Type;
+            public readonly string Value;
+
+            public Token(TokenType type, string value)
+            {
+                Type = type;
+                Value = value;
+            }
         }
 
+        #endregion
+
+        #region Nested type: TokenType
+
+        private enum TokenType
+        {
+            Text,
+            Tag
+        }
+
+        #endregion
     }
 }

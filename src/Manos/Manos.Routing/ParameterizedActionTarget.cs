@@ -24,18 +24,17 @@
 
 
 using System;
-using System.Reflection;
 using System.Collections;
 using System.Collections.Generic;
-
+using System.Reflection;
 
 namespace Manos.Routing
 {
     public class ParameterizedActionTarget : IManosTarget
     {
-        private object target;
+        private readonly ParameterInfo[] parameters;
+        private readonly object target;
         private ParameterizedAction action;
-        private ParameterInfo[] parameters;
 
         public ParameterizedActionTarget(object target, MethodInfo method, ParameterizedAction action)
         {
@@ -55,6 +54,8 @@ namespace Manos.Routing
             get { return target; }
         }
 
+        #region IManosTarget Members
+
         public Delegate Action
         {
             get { return action; }
@@ -62,9 +63,10 @@ namespace Manos.Routing
             {
                 if (value == null)
                     throw new ArgumentNullException("action");
-                ParameterizedAction pa = value as ParameterizedAction;
+                var pa = value as ParameterizedAction;
                 if (pa == null)
-                    throw new InvalidOperationException("ParameterizedActionTarget Action property can only be set to a ParameterizedAction.");
+                    throw new InvalidOperationException(
+                        "ParameterizedActionTarget Action property can only be set to a ParameterizedAction.");
 
                 action = pa;
             }
@@ -84,6 +86,8 @@ namespace Manos.Routing
             action(target, data);
         }
 
+        #endregion
+
         private ParameterInfo[] GetParamList()
         {
             MethodInfo method = action.Method;
@@ -91,14 +95,15 @@ namespace Manos.Routing
             return method.GetParameters();
         }
 
-        public static bool TryGetDataForParamList(ParameterInfo[] parameters, ManosApp app, IManosContext ctx, out object[] data)
+        public static bool TryGetDataForParamList(ParameterInfo[] parameters, ManosApp app, IManosContext ctx,
+                                                  out object[] data)
         {
             data = new object[parameters.Length];
 
             int param_start = 1;
             data[0] = ctx;
 
-            if (typeof(ManosApp).IsAssignableFrom(parameters[1].ParameterType))
+            if (typeof (ManosApp).IsAssignableFrom(parameters[1].ParameterType))
             {
                 data[1] = app;
                 ++param_start;
@@ -121,7 +126,7 @@ namespace Manos.Routing
 
             if (dest.IsArray)
             {
-                var list = ctx.Request.Data.GetList(name);
+                IList<UnsafeString> list = ctx.Request.Data.GetList(name);
                 if (list != null)
                 {
                     Type element = dest.GetElementType();
@@ -143,17 +148,17 @@ namespace Manos.Routing
 
             if (dest.GetInterface("IDictionary") != null)
             {
-                var dict = ctx.Request.Data.GetDict(name);
+                IDictionary<string, UnsafeString> dict = ctx.Request.Data.GetDict(name);
                 if (dict != null)
                 {
-                    Type eltype = typeof(UnsafeString);
-                    IDictionary dd = (IDictionary)Activator.CreateInstance(dest);
+                    Type eltype = typeof (UnsafeString);
+                    var dd = (IDictionary) Activator.CreateInstance(dest);
                     if (dest.IsGenericType)
                     {
                         Type[] args = dest.GetGenericArguments();
                         if (args.Length != 2)
                             throw new Exception("Generic Dictionaries must contain two generic type arguments.");
-                        if (args[0] != typeof(string))
+                        if (args[0] != typeof (string))
                             throw new Exception("Generic Dictionaries must use strings for their keys.");
                         eltype = args[1]; // ie the TValue in Dictionary<TKey,TValue>
                     }
@@ -176,9 +181,10 @@ namespace Manos.Routing
             return TryConvertUnsafeString(ctx, dest, param, strd, out data);
         }
 
-        public static bool TryConvertUnsafeString(IManosContext ctx, Type type, ParameterInfo param, UnsafeString unsafe_str_value, out object data)
+        public static bool TryConvertUnsafeString(IManosContext ctx, Type type, ParameterInfo param,
+                                                  UnsafeString unsafe_str_value, out object data)
         {
-            if (type == typeof(UnsafeString))
+            if (type == typeof (UnsafeString))
             {
                 data = unsafe_str_value;
                 return true;
@@ -197,7 +203,7 @@ namespace Manos.Routing
 
             try
             {
-                var underlying_type = Nullable.GetUnderlyingType(type);
+                Type underlying_type = Nullable.GetUnderlyingType(type);
                 if (underlying_type != null)
                     data = Convert.ChangeType(str_value, underlying_type);
                 else

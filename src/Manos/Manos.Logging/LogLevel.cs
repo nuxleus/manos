@@ -21,43 +21,38 @@
 // THE SOFTWARE.
 
 
-using System;
-
 namespace Manos.Logging
 {
-	public enum LogLevel {
+    public enum LogLevel
+    {
+        /// <summary>
+        /// Do not log any messages.
+        /// </summary>
+        None,
 
-		/// <summary>
-		/// Do not log any messages.
-		/// </summary>
-		None,
-		
-		/// <summary>
-		///  Only log critical errors. These are errors that can not be recovered from.  Leaving
-		///  the application in a volatile unusable state or crashed.
-		/// </summary>
-		Critical,
+        /// <summary>
+        ///  Only log critical errors. These are errors that can not be recovered from.  Leaving
+        ///  the application in a volatile unusable state or crashed.
+        /// </summary>
+        Critical,
 
-		/// <summary>
-		///  Log Critical and normal errors. Normal errors should be able to recoverable
-		///  but there might be an interuption in service.  Such as a request not being processed.
-		/// </summary>
-		Error,
+        /// <summary>
+        ///  Log Critical and normal errors. Normal errors should be able to recoverable
+        ///  but there might be an interuption in service.  Such as a request not being processed.
+        /// </summary>
+        Error,
 
-		/// <summary>
-		///  Log Application information, normal and critical errors.
-		///  Application information is information that might be useful to administrators when
-		///  settingup or tuning an application.
-		/// </summary>
-		Info,
+        /// <summary>
+        ///  Log Application information, normal and critical errors.
+        ///  Application information is information that might be useful to administrators when
+        ///  settingup or tuning an application.
+        /// </summary>
+        Info,
 
-		/// <summary>
-		///  Log all messages including Debug information useful to developers.  This Should only be
-		///  enabled when an error is being diagnosed.
-		/// </summary>
-		Debug,
-	}
+        /// <summary>
+        ///  Log all messages including Debug information useful to developers.  This Should only be
+        ///  enabled when an error is being diagnosed.
+        /// </summary>
+        Debug,
+    }
 }
-
-
-

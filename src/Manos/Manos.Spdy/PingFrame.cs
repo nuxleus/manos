@@ -2,30 +2,29 @@ using System;
 
 namespace Manos.Spdy
 {
-	public class PingFrame : ControlFrame
-	{
-		public int ID { get; set; }
+    public class PingFrame : ControlFrame
+    {
+        public PingFrame()
+        {
+            Type = ControlFrameType.PING;
+        }
 
-		public PingFrame ()
-		{
-			this.Type = ControlFrameType.PING;
-		}
+        public PingFrame(byte[] data, int offset, int length)
+        {
+            Type = ControlFrameType.PING;
+            base.Parse(data, offset, length);
+            ID = Util.BuildInt(data, offset + 8, 4);
+        }
 
-		public PingFrame (byte [] data,int offset,int length)
-		{
-			this.Type = ControlFrameType.PING;
-			base.Parse (data, offset, length);
-			this.ID = Util.BuildInt (data, offset + 8, 4);
-		}
+        public int ID { get; set; }
 
-		public new byte [] Serialize ()
-		{
-			this.Length = 4;
-			var headers = base.Serialize ();
-			Array.Resize (ref headers, 12);
-			Util.IntToBytes (this.ID, ref headers, 8, 4);
-			return headers;
-		}
-	}
+        public new byte[] Serialize()
+        {
+            Length = 4;
+            byte[] headers = base.Serialize();
+            Array.Resize(ref headers, 12);
+            Util.IntToBytes(ID, ref headers, 8, 4);
+            return headers;
+        }
+    }
 }
-

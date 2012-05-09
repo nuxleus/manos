@@ -29,51 +29,56 @@ using System;
 
 namespace Manos.Logging
 {
-	public class ManosConsoleLogger : IManosLogger {
+    public class ManosConsoleLogger : IManosLogger
+    {
+        private readonly LogLevel level;
+        private readonly string name;
 
-		private string name;
-		private LogLevel level;
+        public ManosConsoleLogger(string name, LogLevel level)
+        {
+            this.name = name;
+            this.level = level;
+        }
 
-		public LogLevel Level {
-			get { return level; }
-		}
+        #region IManosLogger Members
 
-		public ManosConsoleLogger (string name, LogLevel level)
-		{
-			this.name = name;
-			this.level = level;
-		}
-		
-		public void Critical (string message, params object[] args)
-		{
-			if (level >= LogLevel.Critical)
-				WriteString ("CRITICAL", message, args);
-		}
-		
-		public void Error (string message, params object[] args)
-		{
-			if (level >= LogLevel.Error)
-				WriteString ("ERROR", message, args);
-		}
+        public LogLevel Level
+        {
+            get { return level; }
+        }
 
-		public void Info (string message, params object[] args)
-		{
-			if (level >= LogLevel.Info)
-				WriteString ("INFO", message, args);
-		}
-		
-		
-		public void Debug (string message, params object[] args)
-		{
-			if (level >= LogLevel.Debug)
-				WriteString ("DEBUG", message, args);
-		}
-		
-		private void WriteString (string level, string message, params object[] args)
-		{
-			string fmt = String.Format (message, args);
-			Console.WriteLine (String.Format("{0} [{1}] {2} - {3}", DateTime.Now.ToString("HH':'mm':'ss'.'fffffff"), level, name, fmt));
-		}
-	}
+        public void Critical(string message, params object[] args)
+        {
+            if (level >= LogLevel.Critical)
+                WriteString("CRITICAL", message, args);
+        }
+
+        public void Error(string message, params object[] args)
+        {
+            if (level >= LogLevel.Error)
+                WriteString("ERROR", message, args);
+        }
+
+        public void Info(string message, params object[] args)
+        {
+            if (level >= LogLevel.Info)
+                WriteString("INFO", message, args);
+        }
+
+
+        public void Debug(string message, params object[] args)
+        {
+            if (level >= LogLevel.Debug)
+                WriteString("DEBUG", message, args);
+        }
+
+        #endregion
+
+        private void WriteString(string level, string message, params object[] args)
+        {
+            string fmt = String.Format(message, args);
+            Console.WriteLine(String.Format("{0} [{1}] {2} - {3}", DateTime.Now.ToString("HH':'mm':'ss'.'fffffff"),
+                                            level, name, fmt));
+        }
+    }
 }
-
