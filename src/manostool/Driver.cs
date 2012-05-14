@@ -280,7 +280,7 @@ namespace Manos.Tool
 			Console.WriteLine ("manosdir: '{0}'", Environment.ManosDirectory);
 			Console.WriteLine ("workingdir: '{0}'", Environment.WorkingDirectory);
 			Console.WriteLine ("datadir: '{0}'", Environment.DataDirectory);
-			Console.WriteLine ("datadir: '{0}'", Environment.DocsDirectory);
+			Console.WriteLine ("docsdir: '{0}'", Environment.DocsDirectory);
 
 			return 1;
 		}
