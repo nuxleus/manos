@@ -173,7 +173,7 @@ namespace Manos.Http.Testing
 			set;
 		}
 
-		public SocketStream Socket {
+		public ITcpSocket Socket {
 			get;
 			set;
 		}
@@ -221,7 +221,7 @@ namespace Manos.Http.Testing
 			return (T) res;
 		}
 		
-		public void Read ()
+		public void Read (Action onClose)
 		{
 		}
 

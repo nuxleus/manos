@@ -42,9 +42,13 @@ namespace Manos.Tool
 			
 			string exe_path = new Uri (typeof (Driver).Assembly.GetName ().CodeBase).LocalPath;
 
-			if (Libev.Loop.IsWindows) {
-				ManosDirectory = Path.GetDirectoryName(Path.GetDirectoryName(exe_path));
+			if (System.Environment.OSVersion.Platform == PlatformID.Win32NT
+				|| System.Environment.OSVersion.Platform == PlatformID.Win32S
+				|| System.Environment.OSVersion.Platform == PlatformID.Win32Windows
+				|| System.Environment.OSVersion.Platform == PlatformID.WinCE) {
+				ManosDirectory = Path.GetDirectoryName(exe_path);
 				DataDirectory = ManosDirectory;
+				DocsDirectory = Path.Combine(ManosDirectory, "docs");
 			} else {
 				ManosDirectory = Path.GetDirectoryName (exe_path);
 				string lib_dir = Path.GetDirectoryName (ManosDirectory);

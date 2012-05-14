@@ -65,12 +65,18 @@ namespace Manos.Http {
 		private IHttpBodyHandler body_handler;
 		private bool finished_reading;
 
-		private AsyncWatcher end_watcher;
+		private IAsyncWatcher end_watcher;
 
-		public HttpEntity ()
+		public HttpEntity (Context context)
 		{
-			end_watcher = new AsyncWatcher (IOLoop.Instance.EventLoop, HandleEnd);
+			this.Context = context;
+			end_watcher = context.CreateAsyncWatcher (HandleEnd);
 			end_watcher.Start ();
+		}
+		
+		public Context Context {
+			get;
+			private set;
 		}
 
 		~HttpEntity ()
@@ -93,7 +99,7 @@ namespace Manos.Http {
 			}
 		}
 
-		public SocketStream Socket {
+		public ITcpSocket Socket {
 			get;
 			protected set;
 		}
@@ -386,17 +392,20 @@ namespace Manos.Http {
 
 			parser = new HttpParser ();
 		}
-
+		
 		public void Read ()
 		{
-			Reset ();
-			Socket.ReadBytes (OnBytesRead);
+			Read (() => {});
 		}
 
-		private void OnBytesRead (IOStream stream, byte [] data, int offset, int count)
+		public void Read (Action onClose)
 		{
-			ByteBuffer bytes = new ByteBuffer (data, offset, count);
+			Reset ();
+			Socket.GetSocketStream ().Read (OnBytesRead, (obj) => {}, onClose);
+		}
 
+		private void OnBytesRead (ByteBuffer bytes)
+		{
 			try {
 				parser.Execute (parser_settings, bytes);
 			} catch (Exception e) {
@@ -499,15 +508,21 @@ namespace Manos.Http {
 			end_watcher.Send ();
 		}
 
-		internal virtual void HandleEnd (Loop loop, AsyncWatcher watcher, EventTypes revents)
+		internal virtual void HandleEnd ()
 		{
 			if (OnEnd != null)
 				OnEnd ();
 		}
 
-		public void Complete (WriteCallback callback)
+		public void Complete (Action callback)
 		{
-			Stream.End (callback);
+			IAsyncWatcher completeWatcher = null;
+			completeWatcher = Context.CreateAsyncWatcher (delegate {
+				completeWatcher.Dispose ();
+				callback ();
+			});
+			completeWatcher.Start ();
+			Stream.End (completeWatcher.Send);
 		}
 
 		public void WriteLine (string str)

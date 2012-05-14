@@ -31,9 +31,9 @@ namespace Manos
 	/// Provides a mechanism for things to happen periodically within a ManosApp. 
 	/// Timeouts are gauranteed to happen at some moment on or after the TimeSpan specified has ellapsed.
 	/// 
-	/// Timeouts will never run before the specified TimeSpan has ellapsed.
+	/// Timeouts will never run before the specified TimeSpan has elapsed.
 	/// 
-	/// Use the method <see cref="Manos.IO.IOLoop"/> "AddTimeout" method to register each Timeout.
+	/// Use the method <see cref="M:Manos.AppHost.AddTimeout"/> method to register each Timeout.
 	/// </summary>
 	public class Timeout
 	{

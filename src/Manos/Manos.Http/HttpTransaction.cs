@@ -21,15 +21,10 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //
-
-
-
-
 using System;
 using System.IO;
 using System.Text;
 using System.Net;
-using System.Net.Sockets;
 using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
@@ -37,48 +32,52 @@ using System.Runtime.InteropServices;
 using Manos.IO;
 using Manos.Collections;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
+	public class HttpTransaction : IHttpTransaction, IDisposable
+	{
 
-	public class HttpTransaction : IHttpTransaction, IDisposable {
-
-		public static HttpTransaction BeginTransaction (HttpServer server, SocketStream stream, HttpConnectionCallback cb, bool closeOnEnd = false)
+		public static HttpTransaction BeginTransaction (HttpServer server, ITcpSocket socket, HttpConnectionCallback cb, bool closeOnEnd = false)
 		{
-			HttpTransaction transaction = new HttpTransaction (server, stream, cb, closeOnEnd);
+			HttpTransaction transaction = new HttpTransaction (server, socket, cb, closeOnEnd);
 
 			return transaction;
 		}
 
 		private bool aborted;
-        private bool closeOnEnd;
-		
+		private bool closeOnEnd;
+		private bool wantClose, responseFinished;
 		private GCHandle gc_handle;
 		
-		public HttpTransaction (HttpServer server, SocketStream stream, HttpConnectionCallback callback, bool closeOnEnd = false)
+		public HttpTransaction (HttpServer server, ITcpSocket socket, HttpConnectionCallback callback, bool closeOnEnd = false)
 		{
 			Server = server;
-			Stream = stream;
+			Socket = socket;
 			this.closeOnEnd = closeOnEnd;
+			
+			Context = server.Context;
 			
 			ConnectionCallback = callback;
 
 			gc_handle = GCHandle.Alloc (this);
 
-			Stream.Closed += delegate (object sender, EventArgs args) {
-				Close ();
-			};
-
-			Request = new HttpRequest (this, stream);
-			Request.Read ();
+			Request = new HttpRequest (this, socket);
+			Request.Read (Close);
 		}
 
 		public void Dispose ()
 		{
-			if (Stream != null) 
-				Stream.Close ();
+			if (Socket != null) 
+				Socket.Close ();
 			
 			// Technically the IOStream should call our Close method, but lets be sure
 			if (gc_handle.IsAllocated)
 				gc_handle.Free ();
+		}
+		
+		public Context Context {
+			get;
+			private set;
 		}
 
 		public HttpServer Server {
@@ -86,7 +85,7 @@ namespace Manos.Http {
 			private set;
 		}
 
-		public SocketStream Stream {
+		public ITcpSocket Socket {
 			get;
 			private set;
 		}
@@ -128,18 +127,22 @@ namespace Manos.Http {
 
 		public void Close ()
 		{
-			if (gc_handle.IsAllocated)
-				gc_handle.Free ();
+			if (!responseFinished) {
+				wantClose = true;
+			} else {
+				if (gc_handle.IsAllocated)
+					gc_handle.Free ();
 
-			if (Request != null)
-				Request.Dispose ();
+				if (Request != null)
+					Request.Dispose ();
 
-			if (Response != null)
-				Response.Dispose ();
+				if (Response != null)
+					Response.Dispose ();
 
-			Stream = null;
-			Request = null;
-			Response = null;
+				Socket = null;
+				Request = null;
+				Response = null;
+			}
 		}
 
 		public void Run ()
@@ -150,9 +153,10 @@ namespace Manos.Http {
 		public void OnRequestReady ()
 		{
 			try {
-				Response = new HttpResponse (Request, Stream);
+				Response = new HttpResponse (Context, Request, Socket);
 				ResponseReady = true;
-				if( closeOnEnd ) Response.OnEnd += () => Response.Complete( OnResponseFinished );
+				if (closeOnEnd)
+					Response.OnEnd += () => Response.Complete (OnResponseFinished);
 				Server.RunTransaction (this);
 			} catch (Exception e) {
 				Console.WriteLine ("Exception while running transaction");
@@ -162,27 +166,36 @@ namespace Manos.Http {
 
 		public void OnResponseFinished ()
 		{
-			bool disconnect = true;
+			Socket.GetSocketStream ().Write (ResponseFinishedCallback ());
+		}
+		
+		IEnumerable<ByteBuffer> ResponseFinishedCallback ()
+		{
+			IBaseWatcher handler = null;
+			handler = Server.Context.CreateIdleWatcher (delegate {
+				handler.Dispose ();
+				responseFinished = true;
+				bool disconnect = true;
 
-			if (!NoKeepAlive) {
-				string dis;
-				if (Request.MinorVersion > 0 && Request.Headers.TryGetValue ("Connection", out dis))
-					disconnect = (dis == "close");
-			}
+				if (!NoKeepAlive) {
+					string dis;
+					if (Request.MinorVersion > 0 && Request.Headers.TryGetValue ("Connection", out dis))
+						disconnect = (dis == "close");
+				}
 
-			if (disconnect) {
-				if (Request != null) {
-					Request.Dispose ();
-					Request = null;
+				if (disconnect) {
+					Socket.Close ();
+					if (wantClose) {
+						Close ();
+					}
+				} else {
+					responseFinished = false;
+					wantClose = false;
+					Request.Read (Close);
 				}
-				if (Response != null) {
-					Response.Dispose ();
-					Response = null;
-				}
-			      	Stream.Close ();
-				return;
-			} else
-				Request.Read ();
+			});
+			handler.Start ();
+			yield break;
 		}
 
 	}

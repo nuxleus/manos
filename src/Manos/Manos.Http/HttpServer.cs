@@ -26,10 +26,8 @@
 using System;
 using System.IO;
 using System.Text;
-using System.Net;
 using System.Linq;
 using System.Reflection;
-using System.Net.Sockets;
 using System.Collections;
 using System.Collections.Generic;
 
@@ -37,62 +35,64 @@ using Libev;
 
 using Manos.IO;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
 
-	public delegate void HttpConnectionCallback (IHttpTransaction transaction);
+    public delegate void HttpConnectionCallback(IHttpTransaction transaction);
 
-	public class HttpServer: IDisposable {
+    public class HttpServer : IDisposable
+    {
 
-		public static readonly string ServerVersion;
+        public static readonly string ServerVersion;
 
-		private HttpConnectionCallback callback;
-		private IOLoop ioloop;
-		SocketStream socket;
-		private bool closeOnEnd;
-		
-		static HttpServer ()
-		{
-			Version v = Assembly.GetExecutingAssembly ().GetName ().Version;
-			ServerVersion = "Manos/" + v.ToString ();
-		}
+        private HttpConnectionCallback callback;
+        ITcpServerSocket socket;
+        private bool closeOnEnd;
 
-		public HttpServer (HttpConnectionCallback callback, IOLoop ioloop, bool closeOnEnd = false )			
-		{
-			this.callback = callback;
-			this.ioloop = ioloop;
-			this.closeOnEnd = closeOnEnd;
-		}
+        static HttpServer()
+        {
+            Version v = Assembly.GetExecutingAssembly().GetName().Version;
+            ServerVersion = "Manos/" + v.ToString();
+        }
 
-		public IOLoop IOLoop {
-			get { return ioloop; }
-		}
+        public HttpServer(Context context, HttpConnectionCallback callback, ITcpServerSocket socket, bool closeOnEnd = false)
+        {
+            this.callback = callback;
+            this.socket = socket;
+            this.closeOnEnd = closeOnEnd;
+			this.Context = context;
+        }
 
-		public void Listen (string host, int port)
-		{
-			SocketStream socket = new SocketStream (ioloop);
+        public Context Context
+        {
+			get;
+			private set;
+        }
 
-			socket.Listen (host, port);
-			socket.ConnectionAccepted += ConnectionAccepted;
-		}
+        public void Listen(string host, int port)
+        {
+            socket.Bind(new IPEndPoint(IPAddress.Parse (host), port));
+			socket.Listen (128, ConnectionAccepted);
+        }
 
-		public void Dispose () 
-		{
-			if (socket != null) {
-				socket.Dispose ();
-				socket = null;
-			}
-		}
+        public void Dispose()
+        {
+            if (socket != null) {
+                socket.Dispose();
+                socket = null;
+            }
+        }
 
-		public void RunTransaction (HttpTransaction trans)
-		{
-			trans.Run ();
-		}
+        public void RunTransaction(HttpTransaction trans)
+        {
+            trans.Run();
+        }
 
-		private void ConnectionAccepted (object sender, ConnectionAcceptedEventArgs args)
-		{
-			var t = HttpTransaction.BeginTransaction (this, args.Stream, callback, closeOnEnd);
-		}
-	}
+        private void ConnectionAccepted(ITcpSocket socket)
+        {
+            var t = HttpTransaction.BeginTransaction(this, socket, callback, closeOnEnd);
+        }
+    }
 }
 
 

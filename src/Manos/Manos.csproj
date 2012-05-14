@@ -89,17 +89,6 @@
     <Compile Include="Manos.Http\IHttpTransaction.cs" />
     <Compile Include="Manos.Http\UploadedFile.cs" />
     <Compile Include="Manos.Routing\RouteHandler.cs" />
-    <Compile Include="Manos.IO\ByteUtils.cs" />
-    <Compile Include="Manos.IO\ConnectionAcceptedEventArgs.cs" />
-    <Compile Include="Manos.IO\IOLoop.cs" />
-    <Compile Include="Manos.IO\IOStream.cs" />
-    <Compile Include="Manos.IO\FileSystem.cs" />
-    <Compile Include="Manos.IO\NopWriteOperation.cs" />
-    <Compile Include="Manos.IO\SendBytesOperation.cs" />
-    <Compile Include="Manos.IO\SendFileOperation.cs" />
-    <Compile Include="Manos.IO\SendFileOperation_NO_SENDFILE.cs" />
-    <Compile Include="Manos.IO\SocketStream.cs" />
-    <Compile Include="Manos.IO\IWriteOperation.cs" />
     <Compile Include="Manos\IManosContext.cs" />
     <Compile Include="Manos.Logging\IManosLogger.cs" />
     <Compile Include="Manos.Logging\ManosConsoleLogger.cs" />
@@ -115,12 +104,6 @@
     <Compile Include="Manos.Routing\MatchType.cs" />
     <Compile Include="Manos\HttpMethods.cs" />
     <Compile Include="Assembly\AssemblyInfo.cs" />
-    <Compile Include="Manos\IRepeatBehavior.cs" />
-    <Compile Include="Manos\IterativeRepeatBehavior.cs" />
-    <Compile Include="Manos\InfiniteRepeatBehavior.cs" />
-    <Compile Include="Manos\RepeatBehavior.cs" />
-    <Compile Include="Manos\TimeoutCallback.cs" />
-    <Compile Include="Manos\Timeout.cs" />
     <Compile Include="Manos\AppHost.cs" />
     <Compile Include="Manos.Caching\CacheItemCallback.cs" />
     <Compile Include="Manos.Caching\CacheOpCallback.cs" />
@@ -141,7 +124,6 @@
     <Compile Include="Manos\ManosPipe.cs" />
     <Compile Include="Manos\Pipeline.cs" />
     <Compile Include="Manos.Collections\DataDictionary.cs" />
-    <Compile Include="Manos.Collections\ByteBuffer.cs" />
     <Compile Include="Manos\RouteAttribute.cs" />
     <Compile Include="Manos\UnsafeString.cs" />
     <Compile Include="Manos.Routing\HtmlFormDataTypeConverter.cs" />
@@ -155,32 +137,46 @@
     <Compile Include="Manos.Template\ITemplateCodegen.cs" />
     <Compile Include="Manos.Template\Expression.cs" />
     <Compile Include="Manos.Template\TemplateFactory.cs" />
-    <Compile Include="Libeio\Libeio.cs" />
-    <Compile Include="Libev\AsyncWatcher.cs" />
-    <Compile Include="Libev\CheckWatcher.cs" />
-    <Compile Include="Libev\EventTypes.cs" />
-    <Compile Include="Libev\IdleWatcher.cs" />
-    <Compile Include="Libev\IOWatcher.cs" />
-    <Compile Include="Libev\Loop.cs" />
-    <Compile Include="Libev\LoopType.cs" />
-    <Compile Include="Libev\PrepareWatcher.cs" />
-    <Compile Include="Libev\TimerWatcher.cs" />
-    <Compile Include="Libev\UnloopType.cs" />
-    <Compile Include="Libev\UnmanagedWatcherCallback.cs" />
-    <Compile Include="Libev\Watcher.cs" />
     <Compile Include="Manos.Http.Testing\MockHttpResponse.cs" />
     <Compile Include="Manos.Http\HttpBufferedBodyHandler.cs" />
     <Compile Include="Manos\IManosRun.cs" />
-    <Compile Include="Manos.IO\UdpReceiver.cs" />
     <Compile Include="Manos\ManosConfig.cs" />
-    <Compile Include="Manos\SynchronizedBlock.cs" />
+    <Compile Include="Manos.Threading\Boundary.cs" />
+    <Compile Include="Manos.Threading\BoundaryExtensions.cs" />
+    <Compile Include="Manos.Threading\IBoundary.cs" />
+    <Compile Include="Manos.IO\StreamCopySequencer.cs" />
+    <Compile Include="Manos\InfiniteRepeatBehavior.cs" />
+    <Compile Include="Manos\IRepeatBehavior.cs" />
+    <Compile Include="Manos\IterativeRepeatBehavior.cs" />
+    <Compile Include="Manos\RepeatBehavior.cs" />
+    <Compile Include="Manos\Timeout.cs" />
+    <Compile Include="Manos\TimeoutCallback.cs" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
   <ItemGroup>
-    <None Include="Manos.Template\codegen.cs" />
     <None Include="Manos.Templates.Testing\ManosTemplateStub.cs" />
   </ItemGroup>
   <Target Name="ListSources">
     <Message Text="@(Compile)" Importance="High" />
   </Target>
+  <ProjectExtensions>
+    <MonoDevelop>
+      <Properties>
+        <Policies>
+          <DotNetNamingPolicy DirectoryNamespaceAssociation="Hierarchical" ResourceNamePolicy="FileFormatDefault" />
+        </Policies>
+      </Properties>
+    </MonoDevelop>
+  </ProjectExtensions>
+  <ItemGroup>
+    <Folder Include="Manos.Threading\" />
+    <Folder Include="Manos.IO\" />
+    <Folder Include="Manos.Collections\" />
+  </ItemGroup>
+  <ItemGroup>
+    <ProjectReference Include="..\Manos.IO\Manos.IO.csproj">
+      <Project>{5E2AA984-1C9C-4890-BEF6-CC2981C49AFF}</Project>
+      <Name>Manos.IO</Name>
+    </ProjectReference>
+  </ItemGroup>
 </Project>

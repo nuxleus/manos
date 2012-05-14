@@ -48,7 +48,8 @@ namespace Manos.Http {
 		private DataDictionary cookies;
 
 		
-		public HttpRequest (string address)
+		public HttpRequest (Context context, string address)
+			: base (context)
 		{
 			Uri uri = null;
 
@@ -64,17 +65,19 @@ namespace Manos.Http {
 			MinorVersion = 1;
 		}
 
-		public HttpRequest (string remote_address, int port) : this (remote_address)
+		public HttpRequest (Context context, string remote_address, int port)
+			: this (context, remote_address)
 		{
 			RemotePort = port;
 		}
 
-		public HttpRequest (IHttpTransaction transaction, SocketStream stream)
+		public HttpRequest (IHttpTransaction transaction, ITcpSocket stream)
+			: base (transaction.Context)
 		{
 			Transaction = transaction;
 			Socket = stream;
-			RemoteAddress = stream.Address;
-			RemotePort = stream.Port;
+			RemoteAddress = stream.RemoteEndpoint.Address.ToString();
+			RemotePort = stream.RemoteEndpoint.Port;
 		}
 
 		public IHttpTransaction Transaction {
@@ -189,11 +192,10 @@ namespace Manos.Http {
 
 		public void Execute ()
 		{
-			Socket = new SocketStream (AppHost.IOLoop);
-			Socket.Connect (RemoteAddress, RemotePort);
-
-			Socket.Connected += delegate {
-				Stream = new HttpStream (this, Socket);
+			var remote = new IPEndPoint(IPAddress.Parse (RemoteAddress), RemotePort);
+			Socket = this.Context.CreateTcpSocket (remote.AddressFamily);
+			Socket.Connect (remote, delegate {
+				Stream = new HttpStream (this, Socket.GetSocketStream ());
 				Stream.Chunked = false;
 				Stream.AddHeaders = false;
 
@@ -205,16 +207,20 @@ namespace Manos.Http {
 				}
 
 				Stream.End (() => {
-					HttpResponse response = new HttpResponse (this, Socket);
+					HttpResponse response = new HttpResponse (Context, this, Socket);
 
-					response.OnCompleted += () => {
-						if (OnResponse != null)
-							OnResponse (response);
-					};
+//					response.OnCompleted += () => {
+//						if (OnResponse != null)
+//							OnResponse (response);
+//					};
 					
-					response.Read ();
+					response.Read (() => {
+						if (OnResponse != null) OnResponse (response);
+					});
 				});
-			};
+			}, ex => {
+				// TODO: figure out what to do here
+			});
 		}
 
 		public override void WriteMetadata (StringBuilder builder)

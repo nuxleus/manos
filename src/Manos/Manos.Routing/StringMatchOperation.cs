@@ -70,7 +70,7 @@ namespace Manos.Routing
 			}
 
 			data = null;
-			end = start + String.Length;
+			end = start + the_string.Length;
 			return true;
 		}
 
