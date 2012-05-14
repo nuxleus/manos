@@ -9,7 +9,6 @@
     <OutputType>Library</OutputType>
     <RootNamespace>Manos.Tests</RootNamespace>
     <AssemblyName>Manos.Tests</AssemblyName>
-    <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
     <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
     <RestorePackages>true</RestorePackages>
   </PropertyGroup>
@@ -43,8 +42,7 @@
     <Reference Include="nunit.framework">
       <HintPath>..\packages\NUnit.2.6.0.12054\lib\nunit.framework.dll</HintPath>
     </Reference>
-    <Reference Include="System">
-    </Reference>
+    <Reference Include="System" />
     <Reference Include="System.Core" />
   </ItemGroup>
   <ItemGroup>
@@ -70,9 +68,9 @@
     <Compile Include="Manos.Routing\HtmlFormDataTypeConverterTest.cs" />
   </ItemGroup>
   <ItemGroup />
-    <Target Name="ListSources">
-          <Message Text="@(Compile)" Importance="High" />
-            </Target>
+  <Target Name="ListSources">
+    <Message Text="@(Compile)" Importance="High" />
+  </Target>
   <ItemGroup>
     <ProjectReference Include="..\Manos\Manos.csproj">
       <Project>{2548B25A-2E1F-4E21-BC43-7E39B1F6F23F}</Project>
