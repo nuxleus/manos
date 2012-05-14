@@ -21,8 +21,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //
-
-
 using System;
 using System.Collections;
 using System.Collections.Generic;
@@ -36,7 +34,8 @@ namespace Manos.Routing
 		private string pattern;
 		private Group [] groups;
 		
-		private class Group {
+		private class Group
+		{
 			public int Start;
 			public int End;
 			public string Name;
