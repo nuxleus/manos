@@ -1,7 +1,7 @@
 
 programfilesdir=@libdir@/@PACKAGE@/
 
-programfiles_DATA = $(top_srcdir)/build/Manos.IO.dll $(top_srcdir)/build/Manos.dll
+programfiles_DATA = $(top_srcdir)/build/Manos.Tests.dll
 
 manos_proj_file = Manos.Tests.csproj
 manos_sources_in = manos.tests.pc.in

@@ -21,9 +21,6 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //
-
-
-
 using System;
 using System.Linq;
 using System.Collections;
@@ -35,12 +32,12 @@ using System.Collections.Specialized;
 using Manos.Http;
 using Manos.Collections;
 
-namespace Manos.Routing {
-
-	public class RouteHandler : IEnumerable<RouteHandler> {
+namespace Manos.Routing
+{
+	public class RouteHandler : IEnumerable<RouteHandler>
+	{
 
 		private List<HttpMethod> methods;
-
 		private IMatchOperation [] match_ops;
 
 		public RouteHandler ()
@@ -141,7 +138,7 @@ namespace Manos.Routing {
 			return GetEnumerator ();
 		}
 
-		public IEnumerator<RouteHandler> GetEnumerator ()  
+		public IEnumerator<RouteHandler> GetEnumerator ()
 		{  
 			yield return this;  
 			foreach (RouteHandler child in Children) {  
@@ -155,7 +152,7 @@ namespace Manos.Routing {
 		{
 			Children.Add (child);	
 		}
-		
+
 		public IManosTarget Find (IHttpRequest request)
 		{
 			return Find (request, 0);
