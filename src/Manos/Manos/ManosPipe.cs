@@ -24,48 +24,46 @@
 
 
 using System;
-
 using Manos.Http;
 using Manos.Routing;
 
 namespace Manos
 {
-	/// <summary>
-	/// ManosPipe provides a mechanism to intercept calls before or after the standard Manos Routing has taking place.
-	/// (For example, Gzip compression module could compress content post process)
-	/// </summary>
-	/// <remarks>
-	/// This is similar in concept to the HttpModule in the ASP.Net stack.</remarks>
-	public class ManosPipe : IManosPipe
-	{
-		public ManosPipe ()
-		{
-		}
-			
-		public virtual void OnPreProcessRequest (ManosApp app, IHttpTransaction transaction, Action complete)
-		{
-			complete ();
-		}
+    /// <summary>
+    /// ManosPipe provides a mechanism to intercept calls before or after the standard Manos Routing has taking place.
+    /// (For example, Gzip compression module could compress content post process)
+    /// </summary>
+    /// <remarks>
+    /// This is similar in concept to the HttpModule in the ASP.Net stack.</remarks>
+    public class ManosPipe : IManosPipe
+    {
+        #region IManosPipe Members
 
-		public virtual void OnPreProcessTarget (IManosContext ctx, Action<IManosTarget> changeHandler)
-		{
-			// default: don't change the handler
-		}
+        public virtual void OnPreProcessRequest(ManosApp app, IHttpTransaction transaction, Action complete)
+        {
+            complete();
+        }
 
-		public virtual void OnPostProcessTarget (IManosContext ctx, IManosTarget target, Action complete)
-		{
-			complete ();
-		}
+        public virtual void OnPreProcessTarget(IManosContext ctx, Action<IManosTarget> changeHandler)
+        {
+            // default: don't change the handler
+        }
 
-		public virtual void OnPostProcessRequest (ManosApp app, IHttpTransaction transaction, Action complete)
-		{
-			complete ();
-		}
-		
-		public virtual void OnError (IManosContext ctx, Action complete)
-		{
-			complete ();
-		}
-	}
+        public virtual void OnPostProcessTarget(IManosContext ctx, IManosTarget target, Action complete)
+        {
+            complete();
+        }
+
+        public virtual void OnPostProcessRequest(ManosApp app, IHttpTransaction transaction, Action complete)
+        {
+            complete();
+        }
+
+        public virtual void OnError(IManosContext ctx, Action complete)
+        {
+            complete();
+        }
+
+        #endregion
+    }
 }
-

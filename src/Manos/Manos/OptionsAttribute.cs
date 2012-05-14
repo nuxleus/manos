@@ -24,28 +24,24 @@
 
 
 using System;
-using System.Reflection;
-
 using Manos.Http;
 
-namespace Manos {
-	
-	/// <summary>
-	/// Indicates that the decorated method should respond to any specified routes when the OPTIONS verb is used for the request.
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-	public class OptionsAttribute : HttpMethodAttribute {
+namespace Manos
+{
+    /// <summary>
+    /// Indicates that the decorated method should respond to any specified routes when the OPTIONS verb is used for the request.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public class OptionsAttribute : HttpMethodAttribute
+    {
+        public OptionsAttribute()
+        {
+            Methods = new[] {HttpMethod.HTTP_OPTIONS};
+        }
 
-		public OptionsAttribute ()
-		{
-			Methods = new HttpMethod[] { HttpMethod.HTTP_OPTIONS };
-		}
-
-		public OptionsAttribute (params string [] patterns) : base (patterns)
-		{
-			Methods = new HttpMethod [] { HttpMethod.HTTP_OPTIONS };
-		}
-	}
+        public OptionsAttribute(params string[] patterns) : base(patterns)
+        {
+            Methods = new[] {HttpMethod.HTTP_OPTIONS};
+        }
+    }
 }
-
-

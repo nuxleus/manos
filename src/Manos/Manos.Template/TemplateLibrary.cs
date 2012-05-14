@@ -25,65 +25,60 @@
 
 using System;
 using System.IO;
-using System.Text;
 using System.Reflection;
-using System.Collections.Generic;
 
+namespace Manos.Templates
+{
+    public static class BuiltinFilters
+    {
+        public static string __upper(string input)
+        {
+            return input.ToUpper();
+        }
 
-namespace Manos.Templates {
+        public static string __lower(string input)
+        {
+            return input.ToLower();
+        }
 
-	public static class BuiltinFilters {
+        public static string __default(string input, string default_value)
+        {
+            if (String.IsNullOrEmpty(input))
+                return default_value;
 
-		public static string __upper (string input)
-		{
-			return input.ToUpper ();
-		}
+            return input;
+        }
 
-		public static string __lower (string input)
-		{
-			return input.ToLower ();
-		}
+        public static string __filename(string input)
+        {
+            return Path.GetFileName(input);
+        }
 
-		public static string __default (string input, string default_value)
-		{
-			if (String.IsNullOrEmpty (input))
-				return default_value;
+        public static string __filename_noextension(string input)
+        {
+            return Path.GetFileName(input);
+        }
 
-			return input;
-		}
+        public static string __remove_extension(string input)
+        {
+            return Path.GetFileNameWithoutExtension(input);
+        }
+    }
 
-		public static string __filename (string input)
-		{
-			return Path.GetFileName (input);
-		}
+    public static class TemplateFilterManager
+    {
+        public static MethodInfo GetFilter(string filter)
+        {
+            Type bin = typeof (BuiltinFilters);
 
-		public static string __filename_noextension (string input)
-		{
-			return Path.GetFileName (input);
-		}
+            MethodInfo res = bin.GetMethod(String.Concat("__", filter), BindingFlags.Static | BindingFlags.Public);
 
-		public static string __remove_extension (string input)
-		{
-			return Path.GetFileNameWithoutExtension (input);
-		}
-	}
+            return res;
+        }
+    }
 
-	public static class TemplateFilterManager {
-
-		public static MethodInfo GetFilter (string filter)
-		{
-			Type bin = typeof (BuiltinFilters);
-
-			MethodInfo res = bin.GetMethod (String.Concat ("__", filter), BindingFlags.Static | BindingFlags.Public);
-
-			return res;
-		}
-	}
-
-	public interface ITemplatePage {
-
-		void Render (IManosContext context, Stream stream, object the_arg);
-	}
+    public interface ITemplatePage
+    {
+        void Render(IManosContext context, Stream stream, object the_arg);
+    }
 }
-
-

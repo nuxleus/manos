@@ -22,30 +22,31 @@
 //
 //
 
-using System;
 using System.Text;
-
 using Manos.IO;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
+    public class HttpBufferedBodyHandler : IHttpBodyHandler
+    {
+        private StringBuilder builder;
 
-	public class HttpBufferedBodyHandler : IHttpBodyHandler {
+        #region IHttpBodyHandler Members
 
-		private StringBuilder builder;
+        public void HandleData(HttpEntity entity, ByteBuffer data, int pos, int len)
+        {
+            if (builder == null)
+                builder = new StringBuilder();
 
-		public void HandleData (HttpEntity entity, ByteBuffer data, int pos, int len)
-		{
-			if (builder == null)
-				builder = new StringBuilder ();
+            string str = entity.ContentEncoding.GetString(data.Bytes, pos, len);
+            builder.Append(str);
+        }
 
-			string str = entity.ContentEncoding.GetString (data.Bytes, pos, len);
-			builder.Append (str);
-		}
+        public void Finish(HttpEntity entity)
+        {
+            entity.PostBody = builder.ToString();
+        }
 
-		public void Finish (HttpEntity entity)
-		{
-			entity.PostBody = builder.ToString ();
-		}
-	}
+        #endregion
+    }
 }
-

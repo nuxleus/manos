@@ -24,52 +24,44 @@
 
 
 using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-
-using Manos;
-using Manos.Http;
-
+using Manos.IO;
 
 namespace Manos.Tool
 {
-	public class DocsCommand
-	{				
-		int? port;
-		
-		public DocsCommand (Environment env)
-		{
-			Environment = env;
-		}
-		
-		public Environment Environment {
-			get;
-			private set;
-		}
-		
-		public int Port {
-			get { 
-				if (port == null)
-					return 8181;
-				return (int) port;
-			}
-			set {
-				if (port <= 0)
-					throw new ArgumentException ("port", "port must be greater than zero.");
-				port = value;	
-			}
-		}
-		
-		public void Run ()
-		{
-			DocsModule docs = new DocsModule (Environment.DocsDirectory);
-			Console.WriteLine ("Go to http://localhost:{0}/ to see your docs.", Port);
-			
-			AppHost.ListenAt (new Manos.IO.IPEndPoint (Manos.IO.IPAddress.Any, Port));
-			AppHost.Start (docs);
-		}
-	}
+    public class DocsCommand
+    {
+        private int? port;
+
+        public DocsCommand(Environment env)
+        {
+            Environment = env;
+        }
+
+        public Environment Environment { get; private set; }
+
+        public int Port
+        {
+            get
+            {
+                if (port == null)
+                    return 8181;
+                return (int) port;
+            }
+            set
+            {
+                if (port <= 0)
+                    throw new ArgumentException("port", "port must be greater than zero.");
+                port = value;
+            }
+        }
+
+        public void Run()
+        {
+            var docs = new DocsModule(Environment.DocsDirectory);
+            Console.WriteLine("Go to http://localhost:{0}/ to see your docs.", Port);
+
+            AppHost.ListenAt(new IPEndPoint(IPAddress.Any, Port));
+            AppHost.Start(docs);
+        }
+    }
 }

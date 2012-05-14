@@ -21,183 +21,176 @@
 // WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
 //
 //
+
 using System;
-using System.IO;
-using System.Text;
-using System.Net;
-using System.Collections;
 using System.Collections.Generic;
 using System.Runtime.InteropServices;
-
 using Manos.IO;
-using Manos.Collections;
 
 namespace Manos.Http
 {
-	public class HttpTransaction : IHttpTransaction, IDisposable
-	{
+    public class HttpTransaction : IHttpTransaction, IDisposable
+    {
+        private readonly bool closeOnEnd;
+        private bool aborted;
+        private GCHandle gc_handle;
+        private bool responseFinished;
+        private bool wantClose;
 
-		public static HttpTransaction BeginTransaction (HttpServer server, ITcpSocket socket, HttpConnectionCallback cb, bool closeOnEnd = false)
-		{
-			HttpTransaction transaction = new HttpTransaction (server, socket, cb, closeOnEnd);
+        public HttpTransaction(HttpServer server, ITcpSocket socket, HttpConnectionCallback callback,
+                               bool closeOnEnd = false)
+        {
+            Server = server;
+            Socket = socket;
+            this.closeOnEnd = closeOnEnd;
 
-			return transaction;
-		}
+            Context = server.Context;
 
-		private bool aborted;
-		private bool closeOnEnd;
-		private bool wantClose, responseFinished;
-		private GCHandle gc_handle;
-		
-		public HttpTransaction (HttpServer server, ITcpSocket socket, HttpConnectionCallback callback, bool closeOnEnd = false)
-		{
-			Server = server;
-			Socket = socket;
-			this.closeOnEnd = closeOnEnd;
-			
-			Context = server.Context;
-			
-			ConnectionCallback = callback;
+            ConnectionCallback = callback;
 
-			gc_handle = GCHandle.Alloc (this);
+            gc_handle = GCHandle.Alloc(this);
 
-			Request = new HttpRequest (this, socket);
-			Request.Read (Close);
-		}
+            Request = new HttpRequest(this, socket);
+            Request.Read(Close);
+        }
 
-		public void Dispose ()
-		{
-			if (Socket != null) 
-				Socket.Close ();
-			
-			// Technically the IOStream should call our Close method, but lets be sure
-			if (gc_handle.IsAllocated)
-				gc_handle.Free ();
-		}
-		
-		public Context Context {
-			get;
-			private set;
-		}
+        public ITcpSocket Socket { get; private set; }
 
-		public HttpServer Server {
-			get;
-			private set;
-		}
+        public HttpConnectionCallback ConnectionCallback { get; private set; }
+        public bool NoKeepAlive { get; set; }
 
-		public ITcpSocket Socket {
-			get;
-			private set;
-		}
+        #region IDisposable Members
 
-		public  HttpConnectionCallback ConnectionCallback {
-			get;
-			private set;
-		}
+        public void Dispose()
+        {
+            if (Socket != null)
+                Socket.Close();
 
-		public IHttpRequest Request {
-			get;
-			private set;
-		}
+            // Technically the IOStream should call our Close method, but lets be sure
+            if (gc_handle.IsAllocated)
+                gc_handle.Free();
+        }
 
-		public IHttpResponse Response {
-			get;
-			private set;
-		}
+        #endregion
 
-		public bool Aborted {
-			get { return aborted; }	
-		}
+        #region IHttpTransaction Members
 
-		public bool ResponseReady {
-			get;
-			private set;
-		}
+        public Context Context { get; private set; }
 
-		// Force the server to disconnect
-		public bool NoKeepAlive {
-			get;
-			set;
-		}
-		
-		public void Abort (int status, string message, params object [] p)
-		{
-			aborted = true;
-		}
+        public HttpServer Server { get; private set; }
 
-		public void Close ()
-		{
-			if (!responseFinished) {
-				wantClose = true;
-			} else {
-				if (gc_handle.IsAllocated)
-					gc_handle.Free ();
+        public IHttpRequest Request { get; private set; }
 
-				if (Request != null)
-					Request.Dispose ();
+        public IHttpResponse Response { get; private set; }
 
-				if (Response != null)
-					Response.Dispose ();
+        public bool Aborted
+        {
+            get { return aborted; }
+        }
 
-				Socket = null;
-				Request = null;
-				Response = null;
-			}
-		}
+        public bool ResponseReady { get; private set; }
 
-		public void Run ()
-		{
-			ConnectionCallback (this);
-		}
+        // Force the server to disconnect
 
-		public void OnRequestReady ()
-		{
-			try {
-				Response = new HttpResponse (Context, Request, Socket);
-				ResponseReady = true;
-				if (closeOnEnd)
-					Response.OnEnd += () => Response.Complete (OnResponseFinished);
-				Server.RunTransaction (this);
-			} catch (Exception e) {
-				Console.WriteLine ("Exception while running transaction");
-				Console.WriteLine (e);
-			}
-		}
+        public void Abort(int status, string message, params object[] p)
+        {
+            aborted = true;
+        }
 
-		public void OnResponseFinished ()
-		{
-			Socket.GetSocketStream ().Write (ResponseFinishedCallback ());
-		}
-		
-		IEnumerable<ByteBuffer> ResponseFinishedCallback ()
-		{
-			IBaseWatcher handler = null;
-			handler = Server.Context.CreateIdleWatcher (delegate {
-				handler.Dispose ();
-				responseFinished = true;
-				bool disconnect = true;
+        public void OnRequestReady()
+        {
+            try
+            {
+                Response = new HttpResponse(Context, Request, Socket);
+                ResponseReady = true;
+                if (closeOnEnd)
+                    Response.OnEnd += () => Response.Complete(OnResponseFinished);
+                Server.RunTransaction(this);
+            }
+            catch (Exception e)
+            {
+                Console.WriteLine("Exception while running transaction");
+                Console.WriteLine(e);
+            }
+        }
 
-				if (!NoKeepAlive) {
-					string dis;
-					if (Request.MinorVersion > 0 && Request.Headers.TryGetValue ("Connection", out dis))
-						disconnect = (dis == "close");
-				}
+        public void OnResponseFinished()
+        {
+            Socket.GetSocketStream().Write(ResponseFinishedCallback());
+        }
 
-				if (disconnect) {
-					Socket.Close ();
-					if (wantClose) {
-						Close ();
-					}
-				} else {
-					responseFinished = false;
-					wantClose = false;
-					Request.Read (Close);
-				}
-			});
-			handler.Start ();
-			yield break;
-		}
+        #endregion
 
-	}
+        public static HttpTransaction BeginTransaction(HttpServer server, ITcpSocket socket, HttpConnectionCallback cb,
+                                                       bool closeOnEnd = false)
+        {
+            var transaction = new HttpTransaction(server, socket, cb, closeOnEnd);
+
+            return transaction;
+        }
+
+        public void Close()
+        {
+            if (!responseFinished)
+            {
+                wantClose = true;
+            }
+            else
+            {
+                if (gc_handle.IsAllocated)
+                    gc_handle.Free();
+
+                if (Request != null)
+                    Request.Dispose();
+
+                if (Response != null)
+                    Response.Dispose();
+
+                Socket = null;
+                Request = null;
+                Response = null;
+            }
+        }
+
+        public void Run()
+        {
+            ConnectionCallback(this);
+        }
+
+        private IEnumerable<ByteBuffer> ResponseFinishedCallback()
+        {
+            IBaseWatcher handler = null;
+            handler = Server.Context.CreateIdleWatcher(delegate
+                                                           {
+                                                               handler.Dispose();
+                                                               responseFinished = true;
+                                                               bool disconnect = true;
+
+                                                               if (!NoKeepAlive)
+                                                               {
+                                                                   string dis;
+                                                                   if (Request.MinorVersion > 0 &&
+                                                                       Request.Headers.TryGetValue("Connection", out dis))
+                                                                       disconnect = (dis == "close");
+                                                               }
+
+                                                               if (disconnect)
+                                                               {
+                                                                   Socket.Close();
+                                                                   if (wantClose)
+                                                                   {
+                                                                       Close();
+                                                                   }
+                                                               }
+                                                               else
+                                                               {
+                                                                   responseFinished = false;
+                                                                   wantClose = false;
+                                                                   Request.Read(Close);
+                                                               }
+                                                           });
+            handler.Start();
+            yield break;
+        }
+    }
 }
-

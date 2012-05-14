@@ -23,36 +23,31 @@
 //
 
 
-
 using System;
-using System.Reflection;
-
 using Manos.Http;
 
-namespace Manos {
-	
-	/// <summary>
-	/// Indicates that the decorated method should respond to any specified routes when the PUT verb is used for the request.
-	/// </summary>
-	[AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
-	public class PutAttribute : HttpMethodAttribute {
-		
-		public PutAttribute ()
-		{
-			Methods = new HttpMethod[] { HttpMethod.HTTP_PUT };
-		}
-		
-		/// <summary>
-		/// Specifies that the decorated method should be invoked whenever a PUT request matches any of the patterns declared)
-		/// </summary>
-		/// <param name="patterns">
-		/// A <see cref="T:System.String[]"/> of patterns to match
-		/// </param>
-		public PutAttribute (params string [] patterns) : base (patterns)
-		{
-			Methods = new HttpMethod [] { HttpMethod.HTTP_PUT };
-		}
-	}
+namespace Manos
+{
+    /// <summary>
+    /// Indicates that the decorated method should respond to any specified routes when the PUT verb is used for the request.
+    /// </summary>
+    [AttributeUsage(AttributeTargets.Method, AllowMultiple = true)]
+    public class PutAttribute : HttpMethodAttribute
+    {
+        public PutAttribute()
+        {
+            Methods = new[] {HttpMethod.HTTP_PUT};
+        }
+
+        /// <summary>
+        /// Specifies that the decorated method should be invoked whenever a PUT request matches any of the patterns declared)
+        /// </summary>
+        /// <param name="patterns">
+        /// A <see cref="T:System.String[]"/> of patterns to match
+        /// </param>
+        public PutAttribute(params string[] patterns) : base(patterns)
+        {
+            Methods = new[] {HttpMethod.HTTP_PUT};
+        }
+    }
 }
-
-

@@ -3,73 +3,78 @@ using System.Threading;
 
 namespace Manos.IO.Managed
 {
-	class TimerWatcher : Watcher, ITimerWatcher
-	{
-		private Action cb;
-		private Timer timer;
-		private TimeSpan after;
-		private int invocationConcurrency;
+    internal class TimerWatcher : Watcher, ITimerWatcher
+    {
+        private readonly Action cb;
+        private TimeSpan after;
+        private int invocationConcurrency;
+        private Timer timer;
 
-		public TimerWatcher (Context context, Action callback, TimeSpan after, TimeSpan repeat)
-			: base (context)
-		{
-			if (callback == null)
-				throw new ArgumentNullException ("callback");
-			
-			this.cb = callback;
-			this.timer = new Timer (Invoke);
-			this.after = after;
-			this.Repeat = repeat;
-		}
+        public TimerWatcher(Context context, Action callback, TimeSpan after, TimeSpan repeat)
+            : base(context)
+        {
+            if (callback == null)
+                throw new ArgumentNullException("callback");
 
-		void Invoke (object state)
-		{
-			try {
-				if (Interlocked.Increment (ref invocationConcurrency) == 1) {
-					if (IsRunning) {
-						Context.Enqueue (cb);
-						after = TimeSpan.Zero;
-					}
-				}
-			} finally {
-				Interlocked.Decrement (ref invocationConcurrency);
-			}
-		}
+            cb = callback;
+            timer = new Timer(Invoke);
+            this.after = after;
+            Repeat = repeat;
+        }
 
-		public override void Start ()
-		{
-			base.Start ();
-			timer.Change ((int) after.TotalMilliseconds,
-				Repeat == TimeSpan.Zero ? Timeout.Infinite : (int) Repeat.TotalMilliseconds);
-		}
+        #region ITimerWatcher Members
 
-		public override void Stop ()
-		{
-			timer.Change (Timeout.Infinite, Timeout.Infinite);
-			base.Stop ();
-		}
+        public override void Start()
+        {
+            base.Start();
+            timer.Change((int) after.TotalMilliseconds,
+                         Repeat == TimeSpan.Zero ? Timeout.Infinite : (int) Repeat.TotalMilliseconds);
+        }
 
-		protected override void Dispose (bool disposing)
-		{
-			if (timer != null)
-			{
-				timer.Change(Timeout.Infinite, Timeout.Infinite);
-				timer.Dispose();
-				timer = null;
-			}
-			Context.Remove (this);
-		}
+        public override void Stop()
+        {
+            timer.Change(Timeout.Infinite, Timeout.Infinite);
+            base.Stop();
+        }
 
-		public void Again ()
-		{
-			after = TimeSpan.Zero;
-			Start ();
-		}
+        public void Again()
+        {
+            after = TimeSpan.Zero;
+            Start();
+        }
 
-		public TimeSpan Repeat {
-			get;
-			set;
-		}
-	}
+        public TimeSpan Repeat { get; set; }
+
+        #endregion
+
+        private void Invoke(object state)
+        {
+            try
+            {
+                if (Interlocked.Increment(ref invocationConcurrency) == 1)
+                {
+                    if (IsRunning)
+                    {
+                        Context.Enqueue(cb);
+                        after = TimeSpan.Zero;
+                    }
+                }
+            }
+            finally
+            {
+                Interlocked.Decrement(ref invocationConcurrency);
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            if (timer != null)
+            {
+                timer.Change(Timeout.Infinite, Timeout.Infinite);
+                timer.Dispose();
+                timer = null;
+            }
+            Context.Remove(this);
+        }
+    }
 }
-

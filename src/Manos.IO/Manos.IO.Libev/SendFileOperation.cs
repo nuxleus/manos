@@ -1,100 +1,130 @@
 using System;
-using Mono.Unix.Native;
+using System.Collections;
 using System.Collections.Generic;
+using Mono.Unix.Native;
 
 namespace Manos.IO.Libev
 {
-	class SendFileOperation : IDisposable, IEnumerable<ByteBuffer>
-	{
-		int sourceFd;
-		EventedByteStream target;
-		string file;
-		long position, length;
-		bool completed;
-		Context context;
+    internal class SendFileOperation : IDisposable, IEnumerable<ByteBuffer>
+    {
+        private readonly Context context;
+        private readonly string file;
+        private readonly EventedByteStream target;
+        private bool completed;
+        private long length;
+        private long position;
+        private int sourceFd;
 
-		public SendFileOperation (Context context, EventedByteStream target, string file)
-		{
-			this.context = context;
-			this.target = target;
-			this.file = file;
-		}
+        public SendFileOperation(Context context, EventedByteStream target, string file)
+        {
+            this.context = context;
+            this.target = target;
+            this.file = file;
+        }
 
-		~SendFileOperation ()
-		{
-			if (sourceFd > 0) {
-				CloseFile ();
-			}
-		}
+        #region IDisposable Members
 
-		public void Dispose ()
-		{
-			if (sourceFd > 0) {
-				CloseFile ();
-			}
-			GC.SuppressFinalize (this);
-		}
+        public void Dispose()
+        {
+            if (sourceFd > 0)
+            {
+                CloseFile();
+            }
+            GC.SuppressFinalize(this);
+        }
 
-		void OpenFile ()
-		{
-			this.sourceFd = Syscall.open (file, OpenFlags.O_RDONLY, FilePermissions.ACCESSPERMS);
-			if (sourceFd == -1) {
-				completed = true;
-				Console.Error.WriteLine ("Error sending file '{0}' error: '{1}'", file, Syscall.GetLastError ());
-			} else {
-				Stat stat;
-				var r = Syscall.fstat (sourceFd, out stat);
-				if (r == -1) {
-					completed = true;
-				} else {
-					length = stat.st_size;
-					target.ResumeWriting ();
-				}
-			}
-		}
+        #endregion
 
-		void CloseFile ()
-		{
-			Syscall.close (sourceFd);
-			sourceFd = 0;
-		}
+        #region IEnumerable<ByteBuffer> Members
 
-		void SendNextBlock ()
-		{
-			context.Eio.SendFile (target.Handle.ToInt32 (), sourceFd, position, length - position, (len, err) => {
-				if (len >= 0) {
-					position += len;
-				} else {
-					completed = true;
-				}
-				if (position == length) {
-					completed = true;
-				}
-				target.ResumeWriting ();
-			});
-		}
+        public IEnumerator<ByteBuffer> GetEnumerator()
+        {
+            return Run().GetEnumerator();
+        }
 
-		IEnumerable<ByteBuffer> Run ()
-		{
-			while (!completed) {
-				if (sourceFd == 0) {
-					OpenFile ();
-				}
-				SendNextBlock ();
-				yield return null;
-			}
-			Dispose ();
-		}
+        IEnumerator IEnumerable.GetEnumerator()
+        {
+            return GetEnumerator();
+        }
 
-		public IEnumerator<ByteBuffer> GetEnumerator ()
-		{
-			return Run ().GetEnumerator ();
-		}
+        #endregion
 
-		System.Collections.IEnumerator System.Collections.IEnumerable.GetEnumerator ()
-		{
-			return GetEnumerator ();
-		}
-	}
+        ~SendFileOperation()
+        {
+            if (sourceFd > 0)
+            {
+                CloseFile();
+            }
+        }
+
+        private void OpenFile()
+        {
+            sourceFd = Syscall.open(file, OpenFlags.O_RDONLY, FilePermissions.ACCESSPERMS);
+            if (sourceFd == -1)
+            {
+                completed = true;
+                Console.Error.WriteLine("Error sending file '{0}' error: '{1}'", file, Stdlib.GetLastError());
+            }
+            else
+            {
+                Stat stat;
+                int r = Syscall.fstat(sourceFd, out stat);
+                if (r == -1)
+                {
+                    completed = true;
+                }
+                else
+                {
+                    length = stat.st_size;
+                    target.ResumeWriting();
+                }
+            }
+        }
+
+        private void CloseFile()
+        {
+            Syscall.close(sourceFd);
+            sourceFd = 0;
+        }
+
+        private void SendNextBlock()
+        {
+            context.Eio.SendFile(target.Handle.ToInt32(), sourceFd, position, length - position, (len, err) =>
+                                                                                                     {
+                                                                                                         if (len >= 0)
+                                                                                                         {
+                                                                                                             position +=
+                                                                                                                 len;
+                                                                                                         }
+                                                                                                         else
+                                                                                                         {
+                                                                                                             completed =
+                                                                                                                 true;
+                                                                                                         }
+                                                                                                         if (position ==
+                                                                                                             length)
+                                                                                                         {
+                                                                                                             completed =
+                                                                                                                 true;
+                                                                                                         }
+                                                                                                         target.
+                                                                                                             ResumeWriting
+                                                                                                             ();
+                                                                                                     });
+        }
+
+        private IEnumerable<ByteBuffer> Run()
+        {
+            while (!completed)
+            {
+                if (sourceFd == 0)
+                {
+                    OpenFile();
+                }
+                SendNextBlock();
+                yield return null;
+            }
+            Dispose();
+        }
+    }
 }
-

@@ -23,40 +23,34 @@
 //
 
 using System;
-
 using Manos.Http;
 
 namespace Manos.Testing
 {
-	public class ManosContextStub : IManosContext
-	{
-		public ManosContextStub ()
-		{
-		}
+    public class ManosContextStub : IManosContext
+    {
+        #region IManosContext Members
 
-		public HttpServer Server {
-			get {
-				throw new NotImplementedException ();
-			}
-		}
+        public HttpServer Server
+        {
+            get { throw new NotImplementedException(); }
+        }
 
-		public IHttpTransaction Transaction {
-			get {
-				throw new NotImplementedException ();
-			}
-		}
+        public IHttpTransaction Transaction
+        {
+            get { throw new NotImplementedException(); }
+        }
 
-		public IHttpRequest Request {
-			get {
-				throw new NotImplementedException ();
-			}
-		}
+        public IHttpRequest Request
+        {
+            get { throw new NotImplementedException(); }
+        }
 
-		public IHttpResponse Response {
-			get {
-				throw new NotImplementedException ();
-			}
-		}		
-	}
+        public IHttpResponse Response
+        {
+            get { throw new NotImplementedException(); }
+        }
+
+        #endregion
+    }
 }
-

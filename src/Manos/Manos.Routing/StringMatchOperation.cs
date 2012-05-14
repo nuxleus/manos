@@ -22,79 +22,85 @@
 //
 //
 using System;
-using System.Collections.Specialized;
 using Manos.Collections;
 
 namespace Manos.Routing
 {
-	public class StringMatchOperation : IMatchOperation
-	{
-		private string str;
-		
-		public StringMatchOperation (string str)
-		{
-			String = str;
-		}
-		
-		public string String {
-			get { return str; }
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("value");
-				if (value.Length == 0)
-					throw new ArgumentException ("StringMatch operations should not use empty strings.");
-				str = value.ToLower ();
-			}
-		}
-	
-		public bool IsMatch (string input, int start, out DataDictionary data, out int end)
-		{
-			return IsMatchInternal (String, input, start, out data, out end);
-		}
+    public class StringMatchOperation : IMatchOperation
+    {
+        private string str;
 
-		internal static bool IsMatchInternal (string the_string, string input, int start, out DataDictionary data, out int end)
-		{
-			if (!StartsWith (input, start, the_string)) {
-				data = null;
-				end = start;
-				return false;
-			}
+        public StringMatchOperation(string str)
+        {
+            String = str;
+        }
 
-			data = null;
-			end = start + the_string.Length;
-			return true;
-		}
-		
-		//internal static bool IsMatchInternal (string the_string, string input, int start, out DataDictionary data, out int end)
-		//{
-		//	if (!StartsWith (input, start, the_string)) {
-		//		
-		//		// some special processing - ugh
-		//		// route to '/' when the parent app has Route("/test", new SubModule)
-		//		// and sub module has [Get("/")]
-		//		if ("/" == the_string && (input.Length + 1 == str.Length + start)) {
-		//			data = null;
-		//			end = input.Length; // force acceptance
-		//			return true;					
-		//		} else {				
-		//			data = null;
-		//			end = start;
-		//			return false;
-		//		}
-		//	}
-		//
-		//	data = null;
-		//	end = start + the_string.Length;
-		//	return true;
-		//}
+        public string String
+        {
+            get { return str; }
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException("value");
+                if (value.Length == 0)
+                    throw new ArgumentException("StringMatch operations should not use empty strings.");
+                str = value.ToLower();
+            }
+        }
 
-		public static bool StartsWith (string input, int start, string str)
-		{
-			if (input.Length < str.Length + start)
-				return false;
-				
-			return String.Compare (input, start, str, 0, str.Length, StringComparison.OrdinalIgnoreCase) == 0;
-		}
-		
-	}
+        #region IMatchOperation Members
+
+        public bool IsMatch(string input, int start, out DataDictionary data, out int end)
+        {
+            return IsMatchInternal(String, input, start, out data, out end);
+        }
+
+        #endregion
+
+        internal static bool IsMatchInternal(string the_string, string input, int start, out DataDictionary data,
+                                             out int end)
+        {
+            if (!StartsWith(input, start, the_string))
+            {
+                data = null;
+                end = start;
+                return false;
+            }
+
+            data = null;
+            end = start + the_string.Length;
+            return true;
+        }
+
+        //internal static bool IsMatchInternal (string the_string, string input, int start, out DataDictionary data, out int end)
+        //{
+        //	if (!StartsWith (input, start, the_string)) {
+        //		
+        //		// some special processing - ugh
+        //		// route to '/' when the parent app has Route("/test", new SubModule)
+        //		// and sub module has [Get("/")]
+        //		if ("/" == the_string && (input.Length + 1 == str.Length + start)) {
+        //			data = null;
+        //			end = input.Length; // force acceptance
+        //			return true;					
+        //		} else {				
+        //			data = null;
+        //			end = start;
+        //			return false;
+        //		}
+        //	}
+        //
+        //	data = null;
+        //	end = start + the_string.Length;
+        //	return true;
+        //}
+
+        public static bool StartsWith(string input, int start, string str)
+        {
+            if (input.Length < str.Length + start)
+                return false;
+
+            return String.Compare(input, start, str, 0, str.Length, StringComparison.OrdinalIgnoreCase) == 0;
+        }
+    }
 }

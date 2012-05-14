@@ -28,13 +28,12 @@
 //
 //
 
-namespace Manos.Http {
-
-	public enum ParserType {
-		HTTP_REQUEST,
-		HTTP_RESPONSE,
-		HTTP_BOTH
-	}
-
+namespace Manos.Http
+{
+    public enum ParserType
+    {
+        HTTP_REQUEST,
+        HTTP_RESPONSE,
+        HTTP_BOTH
+    }
 }
-

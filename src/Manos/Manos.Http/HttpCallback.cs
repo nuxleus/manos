@@ -29,10 +29,7 @@
 //
 
 
-namespace Manos.Http {
-
-	public delegate int HttpCallback (HttpParser parser);
-
+namespace Manos.Http
+{
+    public delegate int HttpCallback(HttpParser parser);
 }
-
-

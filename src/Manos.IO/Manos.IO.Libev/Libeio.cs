@@ -1,7 +1,5 @@
 using System;
 using System.Runtime.InteropServices;
-using Mono.Unix.Native;
-
 using size_t = System.UIntPtr;
 using off_t = System.Int64;
 using mode_t = Mono.Unix.Native.FilePermissions;
@@ -11,38 +9,8 @@ using gid_t = System.Int32;
 
 namespace Manos.IO.Libev
 {
-	static class Libeio
-	{
-		delegate void eio_cb (ref eio_req req);
-
-		[StructLayout (LayoutKind.Sequential)]
-		struct eio_req
-		{
-			public IntPtr next;
-			public IntPtr result;
-			public Int64 offs;  // We are forcing 64bit off_t's by using -D_FILE_OFFSET_BITS=64
-			public UIntPtr size;
-			public IntPtr ptr1;
-			public IntPtr ptr2;
-			public double nv1;
-			public double nv2;
-			public int type;
-			public int int1;
-			public IntPtr int2;
-			public IntPtr int3;
-			public int errorno;
-			public byte flags;
-			public byte pri;
-			public IntPtr data;
-			public IntPtr finish;
-			public IntPtr destroy;
-			public IntPtr feed;
-			public IntPtr grp;
-			public IntPtr grp_prev;
-			public IntPtr grp_next;
-			public IntPtr grp_first;
-		};
-
+    internal static class Libeio
+    {
 //		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
 //		static extern IntPtr eio_nop (int pri, eio_cb cb, IntPtr data);
 //
@@ -78,41 +46,44 @@ namespace Manos.IO.Libev
 //
 //		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
 //		static extern IntPtr eio_readahead (int fd, off_t offset, size_t length, int pri, eio_cb cb, IntPtr data);
-		
-		static eio_cb readCB = ReadCallback;
 
-		static void ReadCallback (ref eio_req req)
-		{
-			var handle = GCHandle.FromIntPtr (req.data);
-			var tuple = (Tuple<byte [], Action<int, byte [], int>>) handle.Target;
-			tuple.Item2 (req.result.ToInt32 (), tuple.Item1, req.errorno);
-			handle.Free ();
-		}
+        private static readonly eio_cb readCB = ReadCallback;
+        private static readonly eio_cb writeCB = WriteCallback;
+        private static readonly eio_cb sendfileCB = SendfileCallback;
 
-		public static void read (int fd, byte[] buffer, long offset, long length, Action<int, byte[], int> callback)
-		{
-			eio_read (fd, buffer, (UIntPtr) length, offset, 0, readCB, GCHandle.ToIntPtr (GCHandle.Alloc (Tuple.Create (buffer, callback))));
-		}
+        private static void ReadCallback(ref eio_req req)
+        {
+            GCHandle handle = GCHandle.FromIntPtr(req.data);
+            var tuple = (Tuple<byte[], Action<int, byte[], int>>) handle.Target;
+            tuple.Item2(req.result.ToInt32(), tuple.Item1, req.errorno);
+            handle.Free();
+        }
 
-		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
-		static extern IntPtr eio_read (int fd, byte [] buf, size_t length, off_t offset, int pri, eio_cb cb, IntPtr data);
+        public static void read(int fd, byte[] buffer, long offset, long length, Action<int, byte[], int> callback)
+        {
+            eio_read(fd, buffer, (UIntPtr) length, offset, 0, readCB,
+                     GCHandle.ToIntPtr(GCHandle.Alloc(Tuple.Create(buffer, callback))));
+        }
 
-		static eio_cb writeCB = WriteCallback;
+        [DllImport("libeio", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr eio_read(int fd, byte[] buf, size_t length, off_t offset, int pri, eio_cb cb,
+                                              IntPtr data);
 
-		static void WriteCallback (ref eio_req req)
-		{
-			var handle = GCHandle.FromIntPtr (req.data);
-			((Action<int, int>) handle.Target) (req.result.ToInt32 (), req.errorno);
-			handle.Free ();
-		}
+        private static void WriteCallback(ref eio_req req)
+        {
+            GCHandle handle = GCHandle.FromIntPtr(req.data);
+            ((Action<int, int>) handle.Target)(req.result.ToInt32(), req.errorno);
+            handle.Free();
+        }
 
-		public static void write (int fd, byte[] buffer, long offset, long length, Action<int, int> callback)
-		{
-			eio_write (fd, buffer, (UIntPtr) length, offset, 0, writeCB, GCHandle.ToIntPtr (GCHandle.Alloc (callback)));
-		}
+        public static void write(int fd, byte[] buffer, long offset, long length, Action<int, int> callback)
+        {
+            eio_write(fd, buffer, (UIntPtr) length, offset, 0, writeCB, GCHandle.ToIntPtr(GCHandle.Alloc(callback)));
+        }
 
-		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
-		static extern IntPtr eio_write (int fd, byte[] buf, size_t length, off_t offset, int pri, eio_cb cb, IntPtr data);
+        [DllImport("libeio", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr eio_write(int fd, byte[] buf, size_t length, off_t offset, int pri, eio_cb cb,
+                                               IntPtr data);
 
 //
 //		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
@@ -135,22 +106,62 @@ namespace Manos.IO.Libev
 //
 //		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
 //		static extern IntPtr eio_dup2 (int fd, int fd2, int pri, eio_cb cb, IntPtr data);
-		static eio_cb sendfileCB = SendfileCallback;
 
-		static void SendfileCallback (ref eio_req req)
-		{
-			var handle = GCHandle.FromIntPtr (req.data);
-			((Action<long, int>) handle.Target) (req.result.ToInt64 (), req.errorno);
-			handle.Free ();
-		}
+        private static void SendfileCallback(ref eio_req req)
+        {
+            GCHandle handle = GCHandle.FromIntPtr(req.data);
+            ((Action<long, int>) handle.Target)(req.result.ToInt64(), req.errorno);
+            handle.Free();
+        }
 
-		public static void sendfile (int out_fd, int in_fd, long offset, long length, Action<long, int> callback)
-		{
-			eio_sendfile (out_fd, in_fd, offset, (UIntPtr) length, 0, sendfileCB, GCHandle.ToIntPtr (GCHandle.Alloc (callback)));
-		}
+        public static void sendfile(int out_fd, int in_fd, long offset, long length, Action<long, int> callback)
+        {
+            eio_sendfile(out_fd, in_fd, offset, (UIntPtr) length, 0, sendfileCB,
+                         GCHandle.ToIntPtr(GCHandle.Alloc(callback)));
+        }
 
-		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
-		static extern IntPtr eio_sendfile (int out_fd, int in_fd, off_t in_offset, size_t length, int pri, eio_cb cb, IntPtr data);
+        [DllImport("libeio", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr eio_sendfile(int out_fd, int in_fd, off_t in_offset, size_t length, int pri,
+                                                  eio_cb cb, IntPtr data);
+
+        #region Nested type: eio_cb
+
+        private delegate void eio_cb(ref eio_req req);
+
+        #endregion
+
+        #region Nested type: eio_req
+
+        [StructLayout(LayoutKind.Sequential)]
+        private struct eio_req
+        {
+            public readonly IntPtr next;
+            public IntPtr result;
+            public readonly Int64 offs; // We are forcing 64bit off_t's by using -D_FILE_OFFSET_BITS=64
+            public readonly UIntPtr size;
+            public readonly IntPtr ptr1;
+            public readonly IntPtr ptr2;
+            public readonly double nv1;
+            public readonly double nv2;
+            public readonly int type;
+            public readonly int int1;
+            public readonly IntPtr int2;
+            public readonly IntPtr int3;
+            public readonly int errorno;
+            public readonly byte flags;
+            public readonly byte pri;
+            public readonly IntPtr data;
+            public readonly IntPtr finish;
+            public readonly IntPtr destroy;
+            public readonly IntPtr feed;
+            public readonly IntPtr grp;
+            public readonly IntPtr grp_prev;
+            public readonly IntPtr grp_next;
+            public readonly IntPtr grp_first;
+        } ;
+
+        #endregion
+
 //
 //		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
 //		static extern IntPtr eio_open (string path, OpenFlags flags, mode_t mode, int pri, eio_cb cb, IntPtr data);
@@ -205,6 +216,5 @@ namespace Manos.IO.Libev
 //
 //		[DllImport ("libeio", CallingConvention = CallingConvention.Cdecl)]
 //		static extern IntPtr eio_custom (eio_cb execute, int pri, eio_cb cb, IntPtr data);
-	}
+    }
 }
-

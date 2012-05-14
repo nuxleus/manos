@@ -28,39 +28,39 @@ using System.Text.RegularExpressions;
 
 namespace Manos.Routing
 {
+    public static class MatchOperationFactory
+    {
+        // If any of these guys are in there we consider it a regex string
+        public static readonly char[] REGEX_CHARS = new[]
+                                                        {
+                                                            '.', '[', ']', '^', '$', '(', ')', '*',
+                                                        };
 
+        public static readonly char[] SIMPLE_CHARS = new[]
+                                                         {
+                                                             '{', '}',
+                                                         };
 
-	public static class MatchOperationFactory
-	{
-		// If any of these guys are in there we consider it a regex string
-		public static readonly char [] REGEX_CHARS = new char [] {
-			'.', '[', ']', '^', '$', '(', ')', '*',
-		};
-		
-		public static readonly char [] SIMPLE_CHARS = new char [] {
-			'{', '}',	
-		};
-		
-		public static IMatchOperation Create (string pattern, MatchType type)
-		{
-			if (pattern == null)
-				throw new ArgumentNullException ("pattern");
-			
-			if (pattern.Length == 0)
-				return new NopMatchOperation ();	
+        public static IMatchOperation Create(string pattern, MatchType type)
+        {
+            if (pattern == null)
+                throw new ArgumentNullException("pattern");
 
-			switch (type) {
-			case MatchType.Simple:
-				return new SimpleMatchOperation (pattern);
-			case MatchType.String:
-				return new StringMatchOperation (pattern);
-			case MatchType.Regex:
-				Regex r = new Regex (pattern);
-				return new RegexMatchOperation (r);
-			default:
-				throw new InvalidOperationException ("unknown match operation type.");
-			}
-			
-		}
-	}
+            if (pattern.Length == 0)
+                return new NopMatchOperation();
+
+            switch (type)
+            {
+                case MatchType.Simple:
+                    return new SimpleMatchOperation(pattern);
+                case MatchType.String:
+                    return new StringMatchOperation(pattern);
+                case MatchType.Regex:
+                    var r = new Regex(pattern);
+                    return new RegexMatchOperation(r);
+                default:
+                    throw new InvalidOperationException("unknown match operation type.");
+            }
+        }
+    }
 }

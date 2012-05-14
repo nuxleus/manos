@@ -24,63 +24,55 @@
 
 
 using System;
-using System.IO;
-using System.Text;
-using System.Linq;
 using System.Reflection;
-using System.Collections;
-using System.Collections.Generic;
-
-using Libev;
-
 using Manos.IO;
 
 namespace Manos.Http
 {
-
     public delegate void HttpConnectionCallback(IHttpTransaction transaction);
 
     public class HttpServer : IDisposable
     {
-
         public static readonly string ServerVersion;
 
-        private HttpConnectionCallback callback;
-        ITcpServerSocket socket;
-        private bool closeOnEnd;
+        private readonly HttpConnectionCallback callback;
+        private readonly bool closeOnEnd;
+        private ITcpServerSocket socket;
 
         static HttpServer()
         {
             Version v = Assembly.GetExecutingAssembly().GetName().Version;
-            ServerVersion = "Manos/" + v.ToString();
+            ServerVersion = "Manos/" + v;
         }
 
-        public HttpServer(Context context, HttpConnectionCallback callback, ITcpServerSocket socket, bool closeOnEnd = false)
+        public HttpServer(Context context, HttpConnectionCallback callback, ITcpServerSocket socket,
+                          bool closeOnEnd = false)
         {
             this.callback = callback;
             this.socket = socket;
             this.closeOnEnd = closeOnEnd;
-			this.Context = context;
+            Context = context;
         }
 
-        public Context Context
-        {
-			get;
-			private set;
-        }
+        public Context Context { get; private set; }
 
-        public void Listen(string host, int port)
-        {
-            socket.Bind(new IPEndPoint(IPAddress.Parse (host), port));
-			socket.Listen (128, ConnectionAccepted);
-        }
+        #region IDisposable Members
 
         public void Dispose()
         {
-            if (socket != null) {
+            if (socket != null)
+            {
                 socket.Dispose();
                 socket = null;
             }
+        }
+
+        #endregion
+
+        public void Listen(string host, int port)
+        {
+            socket.Bind(new IPEndPoint(IPAddress.Parse(host), port));
+            socket.Listen(128, ConnectionAccepted);
         }
 
         public void RunTransaction(HttpTransaction trans)
@@ -90,9 +82,7 @@ namespace Manos.Http
 
         private void ConnectionAccepted(ITcpSocket socket)
         {
-            var t = HttpTransaction.BeginTransaction(this, socket, callback, closeOnEnd);
+            HttpTransaction t = HttpTransaction.BeginTransaction(this, socket, callback, closeOnEnd);
         }
     }
 }
-
-

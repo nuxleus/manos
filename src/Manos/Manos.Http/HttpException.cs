@@ -24,19 +24,16 @@
 
 using System;
 
+namespace Manos.Http
+{
+    public class HttpException : Exception
+    {
+        public HttpException(string error)
+        {
+        }
 
-namespace Manos.Http {
-
-	public class HttpException : Exception {
-
-		public HttpException (string error)
-		{
-		}
-
-		public HttpException (string error, Exception cause) : base (error, cause)
-		{
-		}
-	}
+        public HttpException(string error, Exception cause) : base(error, cause)
+        {
+        }
+    }
 }
-
-

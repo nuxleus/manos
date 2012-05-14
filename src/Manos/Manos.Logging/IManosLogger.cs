@@ -22,40 +22,35 @@
 //
 //
 
-using System;
-
 namespace Manos.Logging
 {
-	public interface IManosLogger
-	{
-		LogLevel Level {
-			get;
-		}
+    public interface IManosLogger
+    {
+        LogLevel Level { get; }
 
-		/// <summary>
-		///  An error that can not be recovered from has occurred.  The application is
-		///  now in a volatile state or has crashed.
-		/// </summary>
-		void Critical (string message, params object[] args);
+        /// <summary>
+        ///  An error that can not be recovered from has occurred.  The application is
+        ///  now in a volatile state or has crashed.
+        /// </summary>
+        void Critical(string message, params object[] args);
 
-		/// <summary>
-		///  An application error has occurred.  The application should be able to recover
-		///  from this type of error, but there might be an interuption in service.  Such
-		///  as a request not being processed.
-		/// </summary>
-		void Error (string message, params object[] args);
+        /// <summary>
+        ///  An application error has occurred.  The application should be able to recover
+        ///  from this type of error, but there might be an interuption in service.  Such
+        ///  as a request not being processed.
+        /// </summary>
+        void Error(string message, params object[] args);
 
-		/// <summary>
-		///  Application information, that might be useful to administrators when setting
-		///  up or tuning an application.
-		/// </summary>
-		void Info (string message, params object[] args);
+        /// <summary>
+        ///  Application information, that might be useful to administrators when setting
+        ///  up or tuning an application.
+        /// </summary>
+        void Info(string message, params object[] args);
 
-		/// <summary>
-		///  Debug information useful to developers.  Should only be enabled when an
-		///  error is being diagnosed.
-		/// </summary>
-		void Debug (string message, params object[] args);
-	}
+        /// <summary>
+        ///  Debug information useful to developers.  Should only be enabled when an
+        ///  error is being diagnosed.
+        /// </summary>
+        void Debug(string message, params object[] args);
+    }
 }
-
