@@ -1,4 +1,4 @@
-<?xml version="1.0" encoding="utf-8"?>
+﻿<?xml version="1.0" encoding="utf-8"?>
 <Project DefaultTargets="Build" ToolsVersion="4.0" xmlns="http://schemas.microsoft.com/developer/msbuild/2003">
   <PropertyGroup>
     <Configuration Condition=" '$(Configuration)' == '' ">Debug</Configuration>
@@ -42,12 +42,7 @@
     <Reference Include="Mono.Posix" />
   </ItemGroup>
   <Import Project="$(MSBuildBinPath)\Microsoft.CSharp.targets" />
-  <ItemGroup>
-    <Folder Include="Assembly\" />
-    <Folder Include="Manos.IO\" />
-    <Folder Include="Manos.IO.Libev\" />
-    <Folder Include="Manos.IO.Managed\" />
-  </ItemGroup>
+  <ItemGroup />
   <ItemGroup>
     <Compile Include="Assembly\AssemblyInfo.cs" />
     <Compile Include="Manos.IO\ByteBuffer.cs" />

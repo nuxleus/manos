@@ -23,23 +23,20 @@
 //
 
 using System;
-using System.Threading;
-
-using NUnit.Framework;
-
 using Manos.ShouldExt;
+using NUnit.Framework;
 
 namespace Manos.Tests
 {
-	[TestFixture()]
-	public class AppHostTest
-	{
-		[Test()]
-		public void Start_NullApp_Throws ()
-		{
-			Should.Throw<ArgumentNullException> (() => AppHost.Start (null));
-		}
-		
+    [TestFixture]
+    public class AppHostTest
+    {
+        [Test]
+        public void Start_NullApp_Throws()
+        {
+            Should.Throw<ArgumentNullException>(() => AppHost.Start(null));
+        }
+
 #if NO
 		[Test]
 		public void AddTimeout_TimeoutAddedBeforeStart_TimeoutIsFiredAfterStart ()
@@ -56,6 +53,5 @@ namespace Manos.Tests
 			Assert.IsTrue (timeout_called);
 		}
 #endif
-	}
+    }
 }
-

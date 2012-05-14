@@ -161,6 +161,7 @@ src/Manos/Makefile
 src/Manos/Assembly/AssemblyInfo.cs
 src/Manos.IO/Makefile
 src/Manos.IO/Assembly/AssemblyInfo.cs
+src/Manos.Tests/Makefile
 src/manostool/Makefile
 src/manostool/AssemblyInfo.cs
 src/libev/Makefile

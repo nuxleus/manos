@@ -1,2 +1,2 @@
 
-SUBDIRS = libeio libev libmanos Manos manostool Manos.IO
+SUBDIRS = libeio libev libmanos Manos manostool Manos.IO Manos.Tests
