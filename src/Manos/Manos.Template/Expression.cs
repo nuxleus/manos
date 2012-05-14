@@ -23,12 +23,9 @@
 //
 
 
-
-
-namespace Manos.Templates {
-
-	  public class Expression {
-
-	  }
+namespace Manos.Templates
+{
+    public class Expression
+    {
+    }
 }
-

@@ -24,95 +24,95 @@
 
 
 using System;
-using System.IO;
-using System.Collections;
 using System.Collections.Generic;
-
-using Manos;
+using System.IO;
 using Manos.Http;
-using MarkdownSharp;
 using Manos.Routing;
+using MarkdownSharp;
 
+namespace Manos.Tool
+{
+    public class DocsModule : ManosApp
+    {
+        private readonly string docs_dir;
 
-namespace Manos.Tool {
+        private readonly Dictionary<string, string> manuals;
+        private readonly Dictionary<string, string> tutorial_pages;
 
-	public class DocsModule : ManosApp {
+        public DocsModule(string docs_dir)
+        {
+            this.docs_dir = docs_dir;
 
-		private string docs_dir;
+            manuals = new Dictionary<string, string>();
 
-		private Dictionary<string,string> manuals;
-		private Dictionary<string,string> tutorial_pages;
+            manuals.Add("Installation", "installation.md");
+            manuals.Add("Routing", "routing.md");
+            manuals.Add("Caching Objects", "object-cache.md");
+            manuals.Add("Pipes", "pipes.md");
+            manuals.Add("Timeouts", "timeouts.md");
 
-		public DocsModule (string docs_dir)
-		{
-			this.docs_dir = docs_dir;
+            tutorial_pages = new Dictionary<string, string>();
+            tutorial_pages.Add("Getting Started With Manos", "tutorial/page-1.md");
+            tutorial_pages.Add("Building the Shorty Application", "tutorial/page-2.md");
+        }
 
-			manuals = new Dictionary<string,string> ();
+        [Route("/", "/Index")]
+        public void Index(IManosContext ctx)
+        {
+            WriteMarkdownDocsPage(ctx.Response, "intro.md");
+        }
 
-			manuals.Add ("Installation", "installation.md");
-			manuals.Add ("Routing", "routing.md");
-			manuals.Add ("Caching Objects", "object-cache.md");
-			manuals.Add ("Pipes", "pipes.md");
-			manuals.Add ("Timeouts", "timeouts.md");
+        [Route("/Manuals/{manual}", MatchType = MatchType.Simple)]
+        public void Manual(IManosContext ctx, string manual)
+        {
+            string md_page;
 
-			tutorial_pages = new Dictionary<string, string> ();
-			tutorial_pages.Add("Getting Started With Manos", "tutorial/page-1.md");
-			tutorial_pages.Add("Building the Shorty Application", "tutorial/page-2.md");
-		}
+            if (!manuals.TryGetValue(manual, out md_page))
+            {
+                ctx.Response.StatusCode = 404;
+                ctx.Response.End();
+                return;
+            }
 
-		[Route ("/", "/Index")]
-		public void Index (IManosContext ctx)
-		{
-			WriteMarkdownDocsPage (ctx.Response, "intro.md");
-		}
+            WriteMarkdownDocsPage(ctx.Response, md_page);
+        }
 
-		[Route ("/Manuals/{manual}", MatchType = MatchType.Simple)]
-		public void Manual (IManosContext ctx, string manual)
-		{
-			string md_page;
+        [Route("/Tutorial/{page}", MatchType = MatchType.Simple)]
+        public void Tutorial(IManosContext ctx, string page)
+        {
+            string md_page;
+            if (!tutorial_pages.TryGetValue(page, out md_page))
+            {
+                ctx.Response.StatusCode = 404;
+                ctx.Response.End();
+                return;
+            }
 
-			if (!manuals.TryGetValue (manual, out md_page)) {
-				ctx.Response.StatusCode = 404;
-				ctx.Response.End ();
-				return;
-			}
+            WriteMarkdownDocsPage(ctx.Response, md_page);
+        }
 
-			WriteMarkdownDocsPage (ctx.Response, md_page);
-		}
+        private void WriteMarkdownDocsPage(IHttpResponse response, string page)
+        {
+            page = Path.Combine(docs_dir, page);
+            if (!File.Exists(page))
+            {
+                Console.WriteLine("docs file does not exist: " + page);
+                response.StatusCode = 404;
+                return;
+            }
 
-		[Route ("/Tutorial/{page}", MatchType = MatchType.Simple)]
-		public void Tutorial (IManosContext ctx, string page)
-		{
-			string md_page;
-			if (!tutorial_pages.TryGetValue(page, out md_page)) {
-				ctx.Response.StatusCode = 404;
-				ctx.Response.End();
-				return;
-			}
+            string markdown = File.ReadAllText(page);
 
-			WriteMarkdownDocsPage (ctx.Response, md_page);
-		}		
+            var md_processor = new Markdown();
+            string html = md_processor.Transform(markdown);
 
-		private void WriteMarkdownDocsPage (IHttpResponse response, string page)
-		{
-			page = Path.Combine (docs_dir, page);
-			if (!File.Exists (page)) {
-				Console.WriteLine ("docs file does not exist: " + page);
-				response.StatusCode = 404;
-				return;
-			}
+            WritePage(response, html);
+        }
 
-			string markdown = File.ReadAllText (page);
-			
-			Markdown md_processor = new Markdown ();
-			string html = md_processor.Transform (markdown);
-
-			WritePage (response, html);
-		}
-
-		private void WritePage (IHttpResponse response, string body)
-		{
-			response.Write (@"<html>
+        private void WritePage(IHttpResponse response, string body)
+        {
+            response.Write(
+                @"<html>
 					   <head>	
 					    <meta http-equiv=""Content-Type"" content=""text/html; charset=iso-8859-1"">
 					    <title>Manos Documentation Browser</title>
@@ -163,34 +163,36 @@ namespace Manos.Tool {
 			                      <h1>Manos Documentation Browser</h1>
 					     </div>
 					     <div id=""nav"">");
-			WriteNavigation (response);
+            WriteNavigation(response);
 
-			response.Write (@"   </div>
+            response.Write(@"   </div>
 					     <div id=""main"">");
-			response.Write (body);
-	    		response.Write (@"   </div>
+            response.Write(body);
+            response.Write(@"   </div>
 					    </div>
 					   </body>
 					  </html>");
 
-			response.End ();
-		}
+            response.End();
+        }
 
-		private void WriteNavigation (IHttpResponse response)
-		{
-			response.WriteLine ("<h2>Tutorial</h2>");
-			response.WriteLine ("<ul>");
-			foreach (string tutorial in tutorial_pages.Keys) {
-				response.WriteLine ("<li><a href='/Tutorial/{0}'>{0}</a></li>", tutorial);
-			}
-			response.WriteLine ("</ul>");
-			
-			response.WriteLine ("<h2>Manuals</h2>");
-			response.WriteLine ("<ul>");
-			foreach (string manual in manuals.Keys) {
-				response.WriteLine ("<li><a href='/Manuals/{0}'>{0}</a></li>", manual);
-			}
-			response.WriteLine ("</ul>");
-		}
-	}
+        private void WriteNavigation(IHttpResponse response)
+        {
+            response.WriteLine("<h2>Tutorial</h2>");
+            response.WriteLine("<ul>");
+            foreach (string tutorial in tutorial_pages.Keys)
+            {
+                response.WriteLine("<li><a href='/Tutorial/{0}'>{0}</a></li>", tutorial);
+            }
+            response.WriteLine("</ul>");
+
+            response.WriteLine("<h2>Manuals</h2>");
+            response.WriteLine("<ul>");
+            foreach (string manual in manuals.Keys)
+            {
+                response.WriteLine("<li><a href='/Manuals/{0}'>{0}</a></li>", manual);
+            }
+            response.WriteLine("</ul>");
+        }
+    }
 }

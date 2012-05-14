@@ -24,76 +24,78 @@
 
 using System;
 
-
 namespace Manos
 {
-	/// <summary>
-	/// Provides a mechanism for things to happen periodically within a ManosApp. 
-	/// Timeouts are gauranteed to happen at some moment on or after the TimeSpan specified has ellapsed.
-	/// 
-	/// Timeouts will never run before the specified TimeSpan has elapsed.
-	/// 
-	/// Use the method <see cref="M:Manos.AppHost.AddTimeout"/> method to register each Timeout.
-	/// </summary>
-	public class Timeout
-	{
-		internal TimeSpan begin;
-		internal TimeSpan span;
-		internal IRepeatBehavior repeat;
-		internal object data;
-		internal TimeoutCallback callback;
+    /// <summary>
+    /// Provides a mechanism for things to happen periodically within a ManosApp. 
+    /// Timeouts are gauranteed to happen at some moment on or after the TimeSpan specified has ellapsed.
+    /// 
+    /// Timeouts will never run before the specified TimeSpan has elapsed.
+    /// 
+    /// Use the method <see cref="M:Manos.AppHost.AddTimeout"/> method to register each Timeout.
+    /// </summary>
+    public class Timeout
+    {
+        internal TimeSpan begin;
+        internal TimeoutCallback callback;
+        internal object data;
+        internal IRepeatBehavior repeat;
+        internal TimeSpan span;
 
-		private bool stopped;
+        private bool stopped;
 
-		public Timeout (TimeSpan span, IRepeatBehavior repeat, object data, TimeoutCallback callback) : this (TimeSpan.Zero, span, repeat,data, callback)
-		{
-		}
+        public Timeout(TimeSpan span, IRepeatBehavior repeat, object data, TimeoutCallback callback)
+            : this(TimeSpan.Zero, span, repeat, data, callback)
+        {
+        }
 
-		public Timeout (TimeSpan begin, TimeSpan span, IRepeatBehavior repeat, object data, TimeoutCallback callback)
-		{
-			this.begin = begin;
-			this.span = span;
-			this.repeat = repeat;
-			this.data = data;
-			this.callback = callback;
-		}
-		
-		/// <summary>
-		/// Causes the action specified in the constructor to be executed. Infrastructure.
-		/// </summary>
-		/// <param name="app">
-		/// A <see cref="ManosApp"/>
-		/// </param>
-		public void Run (ManosApp app)
-		{
-			if (stopped)
-				return;
+        public Timeout(TimeSpan begin, TimeSpan span, IRepeatBehavior repeat, object data, TimeoutCallback callback)
+        {
+            this.begin = begin;
+            this.span = span;
+            this.repeat = repeat;
+            this.data = data;
+            this.callback = callback;
+        }
 
-			try {
-				callback (app, data);
-			} catch (Exception e) {
-				Console.Error.WriteLine ("Exception in timeout callback.");
-				Console.Error.WriteLine (e);
-			}
-			
-			repeat.RepeatPerformed ();
-		}
+        /// <summary>
+        /// Causes the action specified in the constructor to be executed. Infrastructure.
+        /// </summary>
+        /// <param name="app">
+        /// A <see cref="ManosApp"/>
+        /// </param>
+        public void Run(ManosApp app)
+        {
+            if (stopped)
+                return;
 
-		/// <summary>
-		/// Stop the current timeout from further execution.  Once a timeout is stopped it can not be restarted
-		/// </summary>
-		public void Stop ()
-		{
-			stopped = true;
-		}
+            try
+            {
+                callback(app, data);
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Exception in timeout callback.");
+                Console.Error.WriteLine(e);
+            }
 
-		/// <summary>
-		/// Inidicates that the IOLoop should retain this timeout, because it will be run again at some point in the future. Infrastructure.
-		/// </summary>
-		public bool ShouldContinueToRepeat ()
-		{
-			return !stopped && repeat.ShouldContinueToRepeat ();	
-		}
-	}
+            repeat.RepeatPerformed();
+        }
+
+        /// <summary>
+        /// Stop the current timeout from further execution.  Once a timeout is stopped it can not be restarted
+        /// </summary>
+        public void Stop()
+        {
+            stopped = true;
+        }
+
+        /// <summary>
+        /// Inidicates that the IOLoop should retain this timeout, because it will be run again at some point in the future. Infrastructure.
+        /// </summary>
+        public bool ShouldContinueToRepeat()
+        {
+            return !stopped && repeat.ShouldContinueToRepeat();
+        }
+    }
 }
-

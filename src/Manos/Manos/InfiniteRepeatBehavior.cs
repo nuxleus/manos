@@ -22,23 +22,21 @@
 //
 //
 
-using System;
 namespace Manos
 {
-	public class InfiniteRepeatBehavior : IRepeatBehavior
-	{
-		public InfiniteRepeatBehavior ()
-		{
-		}
+    public class InfiniteRepeatBehavior : IRepeatBehavior
+    {
+        #region IRepeatBehavior Members
 
-		public bool ShouldContinueToRepeat ()
-		{
-			return true;
-		}
+        public bool ShouldContinueToRepeat()
+        {
+            return true;
+        }
 
-		public void RepeatPerformed ()
-		{
-		}
-	}
+        public void RepeatPerformed()
+        {
+        }
+
+        #endregion
+    }
 }
-

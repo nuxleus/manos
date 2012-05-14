@@ -26,30 +26,29 @@
 using System;
 using System.Collections.Generic;
 
-using Manos.IO;
-
 namespace Manos.Tool
 {
-	public class RunCommand
-	{
-		public int Run (string app, IList<string> args)
-		{
-			IManosRun mr = Loader.LoadLibrary<IManosRun> (app, new List<string> ());
-			
-			string [] strargs = new string [args.Count];
-			for (int i = 0; i < strargs.Length; i++) {
-				strargs [i] = args [i];
-			}
-			
-			if (mr == null) {
-				Console.WriteLine ("Binary {0} has no suitable entry point", app);
-				return -1;
-			}
-			
-			int ret = mr.Main (strargs);
-			
-			return ret;
-		}
-	}
-}
+    public class RunCommand
+    {
+        public int Run(string app, IList<string> args)
+        {
+            var mr = Loader.LoadLibrary<IManosRun>(app, new List<string>());
 
+            var strargs = new string[args.Count];
+            for (int i = 0; i < strargs.Length; i++)
+            {
+                strargs[i] = args[i];
+            }
+
+            if (mr == null)
+            {
+                Console.WriteLine("Binary {0} has no suitable entry point", app);
+                return -1;
+            }
+
+            int ret = mr.Main(strargs);
+
+            return ret;
+        }
+    }
+}

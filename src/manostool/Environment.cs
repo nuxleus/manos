@@ -25,68 +25,49 @@
 
 using System;
 using System.IO;
-using System.Reflection;
 
 namespace Manos.Tool
 {
+    public class Environment
+    {
+        public Environment()
+        {
+            LibDirectory = "lib";
+            TemplatesDirectory = "Templates";
+            WorkingDirectory = Directory.GetCurrentDirectory();
 
+            string exe_path = new Uri(typeof (Driver).Assembly.GetName().CodeBase).LocalPath;
 
-	public class Environment
-	{
+            if (System.Environment.OSVersion.Platform == PlatformID.Win32NT
+                || System.Environment.OSVersion.Platform == PlatformID.Win32S
+                || System.Environment.OSVersion.Platform == PlatformID.Win32Windows
+                || System.Environment.OSVersion.Platform == PlatformID.WinCE)
+            {
+                ManosDirectory = Path.GetDirectoryName(exe_path);
+                DataDirectory = ManosDirectory;
+                DocsDirectory = Path.Combine(ManosDirectory, "docs");
+            }
+            else
+            {
+                ManosDirectory = Path.GetDirectoryName(exe_path);
+                string lib_dir = Path.GetDirectoryName(ManosDirectory);
+                string prefix = Path.GetDirectoryName(lib_dir);
 
-		public Environment ()
-		{
-			LibDirectory = "lib";
-			TemplatesDirectory = "Templates";
-			WorkingDirectory = Directory.GetCurrentDirectory ();
-			
-			string exe_path = new Uri (typeof (Driver).Assembly.GetName ().CodeBase).LocalPath;
+                DataDirectory = Path.Combine(prefix, "share/manos/");
+                DocsDirectory = Path.Combine(prefix, "share/doc/manos");
+            }
+        }
 
-			if (System.Environment.OSVersion.Platform == PlatformID.Win32NT
-				|| System.Environment.OSVersion.Platform == PlatformID.Win32S
-				|| System.Environment.OSVersion.Platform == PlatformID.Win32Windows
-				|| System.Environment.OSVersion.Platform == PlatformID.WinCE) {
-				ManosDirectory = Path.GetDirectoryName(exe_path);
-				DataDirectory = ManosDirectory;
-				DocsDirectory = Path.Combine(ManosDirectory, "docs");
-			} else {
-				ManosDirectory = Path.GetDirectoryName (exe_path);
-				string lib_dir = Path.GetDirectoryName (ManosDirectory);
-				string prefix = Path.GetDirectoryName (lib_dir);
-			
-				DataDirectory = Path.Combine (prefix, "share/manos/");
-				DocsDirectory = Path.Combine (prefix, "share/doc/manos");
-			}
-		}
-		
-		public string LibDirectory {
-			get;
-			set;
-		}
-		
-		public string ManosDirectory {
-			get;
-			set;
-		}
-		
-		public string TemplatesDirectory {
-			get;
-			set;
-		}
-		
-		public string WorkingDirectory {
-			get;
-			set;
-		}
-		
-		public string DataDirectory {
-			get;
-			set;
-		}
+        public string LibDirectory { get; set; }
 
-		public string DocsDirectory {
-			get;
-			set;
-		}
-	}
+        public string ManosDirectory { get; set; }
+
+        public string TemplatesDirectory { get; set; }
+
+        public string WorkingDirectory { get; set; }
+
+        public string DataDirectory { get; set; }
+
+        public string DocsDirectory { get; set; }
+    }
 }

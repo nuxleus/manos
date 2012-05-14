@@ -47,7 +47,7 @@ namespace Manos.Http.Tests
         [Test]
         public void Ctor_ValidValues_AddsName()
         {
-            string name = "foobar";
+            const string name = "foobar";
             string value = "the value";
 
             var cookie = new HttpCookie(name, value);

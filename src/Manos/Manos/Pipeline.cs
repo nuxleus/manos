@@ -23,220 +23,242 @@
 //
 
 
-
-
 using System;
 using System.Runtime.InteropServices;
-
-
 using Manos.Http;
 using Manos.Routing;
 
-namespace Manos {
+namespace Manos
+{
+    public enum PipelineStep
+    {
+        PreProcess,
+        Execute,
+        WaitingForEnd,
+        PostProcess,
+        Complete
+    }
 
-	public enum PipelineStep {
-		PreProcess,
-		Execute,
-		WaitingForEnd,
-		PostProcess,
-		Complete
-	}
+    /// <summary>
+    /// A pipeline coordinates an httprequest/response session.  Making sure all the ManosPipes are invoked
+    /// and invoking the actual request exectution.
+    /// </summary>
+    /// <remarks>
+    /// User code should typically not use this type.
+    /// </remarks>
+    public class Pipeline
+    {
+        private readonly ManosApp app;
+        private readonly IHttpTransaction transaction;
+        private ManosContext ctx;
+        private GCHandle handle;
 
-	/// <summary>
-	/// A pipeline coordinates an httprequest/response session.  Making sure all the ManosPipes are invoked
-	/// and invoking the actual request exectution.
-	/// </summary>
-	/// <remarks>
-	/// User code should typically not use this type.
-	/// </remarks>
-	public class Pipeline {
+        private int pending;
+        private PipelineStep step;
 
-		private ManosApp app;
-		private ManosContext ctx;
-		private IHttpTransaction transaction;
+        public Pipeline(ManosApp app, IHttpTransaction transaction)
+        {
+            this.app = app;
+            this.transaction = transaction;
 
-		private int pending;
-		private PipelineStep step;
-		private GCHandle handle;
+            pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
+            step = PipelineStep.PreProcess;
+            handle = GCHandle.Alloc(this);
 
-		public Pipeline (ManosApp app, IHttpTransaction transaction)
-		{
-			this.app = app;
-			this.transaction = transaction;
+            transaction.Response.OnEnd += HandleEnd;
+        }
 
-			pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
-			step = PipelineStep.PreProcess;
-			handle = GCHandle.Alloc (this);
+        public void Begin()
+        {
+            if (AppHost.Pipes == null)
+            {
+                StepCompleted();
+                return;
+            }
 
-			transaction.Response.OnEnd += HandleEnd;
-		}
+            foreach (IManosPipe pipe in AppHost.Pipes)
+            {
+                try
+                {
+                    pipe.OnPreProcessRequest(app, transaction, StepCompleted);
 
-		public void Begin ()
-		{
-			if (AppHost.Pipes == null) {
-				StepCompleted ();
-				return;
-			}
+                    if (transaction.Aborted)
+                        return;
+                }
+                catch (Exception e)
+                {
+                    pending--;
 
-			foreach (IManosPipe pipe in AppHost.Pipes) {
-				try {
-					pipe.OnPreProcessRequest (app, transaction, StepCompleted);
-					
-					if (transaction.Aborted)
-						return;
-				} catch (Exception e) {
-					pending--;
+                    Console.Error.WriteLine("Exception in {0}::OnPreProcessRequest.", pipe);
+                    Console.Error.WriteLine(e);
+                }
+            }
+        }
 
-					Console.Error.WriteLine ("Exception in {0}::OnPreProcessRequest.", pipe);
-					Console.Error.WriteLine (e);
-				}
-			}
-		}
+        private void Execute()
+        {
+            step = PipelineStep.WaitingForEnd;
 
-		private void Execute ()
-		{
-			step = PipelineStep.WaitingForEnd;
+            ctx = new ManosContext(transaction);
 
-			ctx = new ManosContext (transaction);
+            IManosTarget handler = app.Routes.Find(transaction.Request);
 
-			var handler = app.Routes.Find (transaction.Request);
+            PipePreProcessTarget((newHandler) =>
+                                     {
+                                         if (newHandler != handler)
+                                         {
+                                             handler = newHandler;
+                                         }
+                                     });
 
-			PipePreProcessTarget((newHandler) => {
-					if(newHandler != handler) {
-						handler = newHandler;
-					}
-				});
-						
-			if (handler == null) {
-				ctx.Response.StatusCode = 404;
-				ctx.Response.End (app.Get404Response());
-				return;
-			}
+            if (handler == null)
+            {
+                ctx.Response.StatusCode = 404;
+                ctx.Response.End(app.Get404Response());
+                return;
+            }
 
-			ctx.Response.StatusCode = 200;
+            ctx.Response.StatusCode = 200;
 
-			try {
-				handler.Invoke (app, ctx);
-			} catch (Exception e) {
-				Console.Error.WriteLine ("Exception in transaction handler:");
-				Console.Error.WriteLine (e);
-				ctx.Response.StatusCode = 500;
-				ctx.Response.End (app.Get500Response());
-				//
-				// TODO: Maybe the cleanest thing to do is
-				// have a HandleError, HandleException thing
-				// on HttpTransaction, along with an UnhandledException
-				// method/event on ManosModule.
-				//
-				// end = true;
-			}
+            try
+            {
+                handler.Invoke(app, ctx);
+            }
+            catch (Exception e)
+            {
+                Console.Error.WriteLine("Exception in transaction handler:");
+                Console.Error.WriteLine(e);
+                ctx.Response.StatusCode = 500;
+                ctx.Response.End(app.Get500Response());
+                //
+                // TODO: Maybe the cleanest thing to do is
+                // have a HandleError, HandleException thing
+                // on HttpTransaction, along with an UnhandledException
+                // method/event on ManosModule.
+                //
+                // end = true;
+            }
 
-			PipePostProcessTarget(handler);
+            PipePostProcessTarget(handler);
 
-			if (ctx.Response.StatusCode == 404) {
-				step = PipelineStep.WaitingForEnd;
-				ctx.Response.End ();
-				return;
-			}
-		}
-		
-		private void PipePreProcessTarget(Action<IManosTarget> callback)
-		{
-			if (null != AppHost.Pipes) {
-				for (int i = 0; i < AppHost.Pipes.Count; ++i)
-				{
-					IManosPipe pipe = AppHost.Pipes[i];
-					try {
-						pipe.OnPreProcessTarget (ctx, callback);
-					} catch (Exception e) {
-						Console.Error.WriteLine ("Exception in {0}::OnPreProcessTarget.", pipe);
-						Console.Error.WriteLine (e);
-					}
-				}
-			}
-		}
+            if (ctx.Response.StatusCode == 404)
+            {
+                step = PipelineStep.WaitingForEnd;
+                ctx.Response.End();
+                return;
+            }
+        }
 
-		private void PipePostProcessTarget(IManosTarget handler)
-		{
-			if (null != AppHost.Pipes) {
-				// reset pending pipes
-				pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
-		
-				for (int i = AppHost.Pipes.Count - 1; i >= 0 ; --i)	{
-					IManosPipe pipe = AppHost.Pipes[i];
-					try {
-						pipe.OnPostProcessTarget (ctx, handler, StepCompleted);
-					} catch (Exception e) {
-						Console.Error.WriteLine ("Exception in {0}::OnPostProcessTarget.", pipe);
-						Console.Error.WriteLine (e);
-					}
-				}
-			}		
-		}
+        private void PipePreProcessTarget(Action<IManosTarget> callback)
+        {
+            if (null != AppHost.Pipes)
+            {
+                for (int i = 0; i < AppHost.Pipes.Count; ++i)
+                {
+                    IManosPipe pipe = AppHost.Pipes[i];
+                    try
+                    {
+                        pipe.OnPreProcessTarget(ctx, callback);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error.WriteLine("Exception in {0}::OnPreProcessTarget.", pipe);
+                        Console.Error.WriteLine(e);
+                    }
+                }
+            }
+        }
 
-		private void PostProcess ()
-		{
-			if (AppHost.Pipes == null) {
-				StepCompleted ();
-				return;
-			}
+        private void PipePostProcessTarget(IManosTarget handler)
+        {
+            if (null != AppHost.Pipes)
+            {
+                // reset pending pipes
+                pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
 
-			if (null != AppHost.Pipes) {
-				// reset pending pipes
-				pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
-			
-				for (int i = AppHost.Pipes.Count - 1; i >= 0 ; --i)	{
-					IManosPipe pipe = AppHost.Pipes[i];
-					try {
-						pipe.OnPostProcessRequest (app, transaction, StepCompleted);
+                for (int i = AppHost.Pipes.Count - 1; i >= 0; --i)
+                {
+                    IManosPipe pipe = AppHost.Pipes[i];
+                    try
+                    {
+                        pipe.OnPostProcessTarget(ctx, handler, StepCompleted);
+                    }
+                    catch (Exception e)
+                    {
+                        Console.Error.WriteLine("Exception in {0}::OnPostProcessTarget.", pipe);
+                        Console.Error.WriteLine(e);
+                    }
+                }
+            }
+        }
 
-						if (ctx.Transaction.Aborted)
-							return;
-					} catch (Exception e) {
-						pending--;
+        private void PostProcess()
+        {
+            if (AppHost.Pipes == null)
+            {
+                StepCompleted();
+                return;
+            }
 
-						Console.Error.WriteLine ("Exception in {0}::OnPostProcessRequest.", pipe);
-						Console.Error.WriteLine (e);
-					}
-				}
-			}
-		}
+            if (null != AppHost.Pipes)
+            {
+                // reset pending pipes
+                pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
 
-		private void Complete ()
-		{
-			transaction.Response.Complete (transaction.OnResponseFinished);
+                for (int i = AppHost.Pipes.Count - 1; i >= 0; --i)
+                {
+                    IManosPipe pipe = AppHost.Pipes[i];
+                    try
+                    {
+                        pipe.OnPostProcessRequest(app, transaction, StepCompleted);
 
-			handle.Free ();
-		}
+                        if (ctx.Transaction.Aborted)
+                            return;
+                    }
+                    catch (Exception e)
+                    {
+                        pending--;
 
-		private void StepCompleted ()
-		{
-			if (--pending > 0)
-				return;
+                        Console.Error.WriteLine("Exception in {0}::OnPostProcessRequest.", pipe);
+                        Console.Error.WriteLine(e);
+                    }
+                }
+            }
+        }
 
-			pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
-			step++;
-			
-			switch (step) {
-			case PipelineStep.Execute:
-				Execute ();
-				break;
-			case PipelineStep.PostProcess:
-				PostProcess ();
-				break;
-			case PipelineStep.Complete:
-				Complete ();
-				break;
-			}
-		}
+        private void Complete()
+        {
+            transaction.Response.Complete(transaction.OnResponseFinished);
 
-		private void HandleEnd ()
-		{
-			pending = 0;
-			StepCompleted ();
-		}
-	}
+            handle.Free();
+        }
 
+        private void StepCompleted()
+        {
+            if (--pending > 0)
+                return;
+
+            pending = AppHost.Pipes == null ? 1 : AppHost.Pipes.Count;
+            step++;
+
+            switch (step)
+            {
+                case PipelineStep.Execute:
+                    Execute();
+                    break;
+                case PipelineStep.PostProcess:
+                    PostProcess();
+                    break;
+                case PipelineStep.Complete:
+                    Complete();
+                    break;
+            }
+        }
+
+        private void HandleEnd()
+        {
+            pending = 0;
+            StepCompleted();
+        }
+    }
 }
-
-

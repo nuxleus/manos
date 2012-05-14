@@ -24,203 +24,209 @@
 
 
 using System;
-using System.IO;
-using System.Collections;
-using System.Collections.Generic;
-using System.Reflection;
-using System.Diagnostics;
-using Microsoft.CSharp;
 using System.CodeDom.Compiler;
+using System.Collections.Generic;
+using System.Diagnostics;
+using System.IO;
+using Microsoft.CSharp;
 
 namespace Manos.Tool
 {
-	public class BuildCommand
-	{
-		public static readonly string COMPILED_TEMPLATES = "Templates.dll";
-		
-		private string [] sources;
-		private string [] ref_asm;
-		private string output_name;
-		
-		public BuildCommand (Environment env)
-		{
-			Environment = env;
-		}
-		
-		public Environment Environment {
-			get;
-			private set;
-		}
-		
-		public string [] Sources {
-			get {
-				if (sources == null)
-					sources = CreateSourcesList ();
-				return sources;
-			}
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("value");
-				sources = value;
-			}
-		}
-		
-		public string OutputAssembly {
-			get {
-				if (output_name == null)
-					return Path.GetFileName (Directory.GetCurrentDirectory ()) + ".dll";
-				return output_name;
-			}
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("value");
-				output_name = value;
-			}
-		}
-		
-		public string [] ReferencedAssemblies {
-			get {
-				if (ref_asm == null)
-					ref_asm = CreateReferencesList ();
-				return ref_asm;
-			}
-			set {
-				ref_asm = value;
-			}
-		}
-		
-		public void Run ()
-		{
-			ManosConfig.Load();
+    public class BuildCommand
+    {
+        public static readonly string COMPILED_TEMPLATES = "Templates.dll";
 
-			if (RunXBuild())
-				return;
-			if (RunMake ())
-				return;
+        private string output_name;
+        private string[] ref_asm;
+        private string[] sources;
 
-			CompileCS ();
-		}
+        public BuildCommand(Environment env)
+        {
+            Environment = env;
+        }
 
-		public bool RunXBuild ()
-		{
-			string [] slns = Directory.GetFiles (Directory.GetCurrentDirectory (), "*.sln");
-			if (slns.Length < 1)
-				return false;
+        public Environment Environment { get; private set; }
 
-			foreach (string sln in slns) {
-				Process p = Process.Start ("xbuild", sln);
-				p.WaitForExit ();
-			}
+        public string[] Sources
+        {
+            get
+            {
+                if (sources == null)
+                    sources = CreateSourcesList();
+                return sources;
+            }
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException("value");
+                sources = value;
+            }
+        }
 
-			return true;
-		}
+        public string OutputAssembly
+        {
+            get
+            {
+                if (output_name == null)
+                    return Path.GetFileName(Directory.GetCurrentDirectory()) + ".dll";
+                return output_name;
+            }
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException("value");
+                output_name = value;
+            }
+        }
 
-		public bool RunMake ()
-		{
-			if (!File.Exists ("Makefile") && !File.Exists ("makefile"))
-				return false;
+        public string[] ReferencedAssemblies
+        {
+            get
+            {
+                if (ref_asm == null)
+                    ref_asm = CreateReferencesList();
+                return ref_asm;
+            }
+            set { ref_asm = value; }
+        }
 
-			Process p = Process.Start ("make");
-			p.WaitForExit ();
-			
-			return true;
-		}
+        public void Run()
+        {
+            ManosConfig.Load();
 
-		public void CompileCS ()
-		{
-			var provider = new CSharpCodeProvider ();
-			var options = new CompilerParameters (ReferencedAssemblies, OutputAssembly, true);
+            if (RunXBuild())
+                return;
+            if (RunMake())
+                return;
 
-			
-			var results = provider.CompileAssemblyFromFile (options, Sources);
-			
-			if (results.Errors.Count > 0) {
-				foreach (var e in results.Errors) {
-					Console.WriteLine (e);	
-				}
-			}
-		}
-		
-		private string [] CreateSourcesList ()
-		{
-			List<string> sources = new List<string> ();
-			
-			FindCSFilesRecurse (Environment.WorkingDirectory, sources);
-			
-			return sources.ToArray ();
-		}
-		
-		private void FindCSFilesRecurse (string dir, List<string> sources)
-		{
-			sources.AddRange (Directory.GetFiles (dir, "*.cs"));
-			
-			foreach (string subdir in Directory.GetDirectories (dir)) {
-				if (dir == Environment.WorkingDirectory) {
-					if (subdir == "Content" || subdir == "Templates")
-						continue;
-				}
-				if (subdir.EndsWith (".exclude"))
-					continue;
-				FindCSFilesRecurse (subdir, sources);
-			}
-		}
-		
-		private string [] CreateReferencesList ()
-		{
-			var libs = new List<string> ();
-			
-			AddDefaultReferences (libs);
+            CompileCS();
+        }
 
-			// Find any additional dlls in project file
-			foreach (string lib in Directory.GetFiles (Directory.GetCurrentDirectory ())) {
-				if (!lib.EndsWith (".dll", StringComparison.InvariantCultureIgnoreCase))
-					continue;
-				if (Path.GetFileName (lib) == OutputAssembly)
-					continue;
-				libs.Add (lib);
-			}
+        public bool RunXBuild()
+        {
+            string[] slns = Directory.GetFiles(Directory.GetCurrentDirectory(), "*.sln");
+            if (slns.Length < 1)
+                return false;
 
-			// Read additional referenced assemblies from manos.config in project folder:
-			// eg:
-			//
-			// [manos]
-			// ReferencedAssemblies=System.Core.dll Microsoft.CSharp.dll Manos.Mvc.dll
-			//
-			if (ManosConfig.Main != null)
-			{
-				var strReferencedAssemblies = ManosConfig.GetExpanded ("ReferencedAssemblies");
-				if (strReferencedAssemblies != null)
-				{
-					var referencedAssemblies = strReferencedAssemblies.Split (' ', ',');
-					foreach (var a in referencedAssemblies)
-					{
-						string ManosFile = System.IO.Path.Combine (Environment.ManosDirectory, a);
-						if (System.IO.File.Exists (ManosFile))
-						{
-							libs.Add (ManosFile);
-						}
-						else
-						{
-							libs.Add (a);
-						}
+            foreach (string sln in slns)
+            {
+                Process p = Process.Start("xbuild", sln);
+                p.WaitForExit();
+            }
 
-					}
-				}
-			}
-			
-			return libs.ToArray ();
-		}
-		
-		private void AddDefaultReferences (List<string> libs)
-		{
-			string manosdll = Path.Combine (Environment.ManosDirectory, "Manos.dll");
-			libs.Add (manosdll);
+            return true;
+        }
 
-      string manosiodll = Path.Combine(Environment.ManosDirectory, "Manos.IO.dll");
-      libs.Add(manosiodll);
+        public bool RunMake()
+        {
+            if (!File.Exists("Makefile") && !File.Exists("makefile"))
+                return false;
 
-			string ninidll = Path.Combine (Environment.ManosDirectory, "Nini.dll");
-			libs.Add (ninidll);
-		}
-	}
+            Process p = Process.Start("make");
+            p.WaitForExit();
+
+            return true;
+        }
+
+        public void CompileCS()
+        {
+            var provider = new CSharpCodeProvider();
+            var options = new CompilerParameters(ReferencedAssemblies, OutputAssembly, true);
+
+
+            CompilerResults results = provider.CompileAssemblyFromFile(options, Sources);
+
+            if (results.Errors.Count > 0)
+            {
+                foreach (object e in results.Errors)
+                {
+                    Console.WriteLine(e);
+                }
+            }
+        }
+
+        private string[] CreateSourcesList()
+        {
+            var sources = new List<string>();
+
+            FindCSFilesRecurse(Environment.WorkingDirectory, sources);
+
+            return sources.ToArray();
+        }
+
+        private void FindCSFilesRecurse(string dir, List<string> sources)
+        {
+            sources.AddRange(Directory.GetFiles(dir, "*.cs"));
+
+            foreach (string subdir in Directory.GetDirectories(dir))
+            {
+                if (dir == Environment.WorkingDirectory)
+                {
+                    if (subdir == "Content" || subdir == "Templates")
+                        continue;
+                }
+                if (subdir.EndsWith(".exclude"))
+                    continue;
+                FindCSFilesRecurse(subdir, sources);
+            }
+        }
+
+        private string[] CreateReferencesList()
+        {
+            var libs = new List<string>();
+
+            AddDefaultReferences(libs);
+
+            // Find any additional dlls in project file
+            foreach (string lib in Directory.GetFiles(Directory.GetCurrentDirectory()))
+            {
+                if (!lib.EndsWith(".dll", StringComparison.InvariantCultureIgnoreCase))
+                    continue;
+                if (Path.GetFileName(lib) == OutputAssembly)
+                    continue;
+                libs.Add(lib);
+            }
+
+            // Read additional referenced assemblies from manos.config in project folder:
+            // eg:
+            //
+            // [manos]
+            // ReferencedAssemblies=System.Core.dll Microsoft.CSharp.dll Manos.Mvc.dll
+            //
+            if (ManosConfig.Main != null)
+            {
+                string strReferencedAssemblies = ManosConfig.GetExpanded("ReferencedAssemblies");
+                if (strReferencedAssemblies != null)
+                {
+                    string[] referencedAssemblies = strReferencedAssemblies.Split(' ', ',');
+                    foreach (string a in referencedAssemblies)
+                    {
+                        string ManosFile = Path.Combine(Environment.ManosDirectory, a);
+                        if (File.Exists(ManosFile))
+                        {
+                            libs.Add(ManosFile);
+                        }
+                        else
+                        {
+                            libs.Add(a);
+                        }
+                    }
+                }
+            }
+
+            return libs.ToArray();
+        }
+
+        private void AddDefaultReferences(List<string> libs)
+        {
+            string manosdll = Path.Combine(Environment.ManosDirectory, "Manos.dll");
+            libs.Add(manosdll);
+
+            string manosiodll = Path.Combine(Environment.ManosDirectory, "Manos.IO.dll");
+            libs.Add(manosiodll);
+
+            string ninidll = Path.Combine(Environment.ManosDirectory, "Nini.dll");
+            libs.Add(ninidll);
+        }
+    }
 }

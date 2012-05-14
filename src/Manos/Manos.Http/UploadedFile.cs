@@ -26,135 +26,133 @@
 
 using System;
 using System.IO;
-using System.Collections;
-using System.Collections.Generic;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
+    public interface IUploadedFileCreator
+    {
+        UploadedFile Create(string name);
+    }
 
-	public interface IUploadedFileCreator {
+    public class TempFileUploadedFileCreator : IUploadedFileCreator
+    {
+        #region IUploadedFileCreator Members
 
-		UploadedFile Create (string name);
-	}
+        public UploadedFile Create(string name)
+        {
+            string temp_file = Path.GetTempFileName();
+            return new TempFileUploadedFile(name, temp_file);
+        }
 
-	public class TempFileUploadedFileCreator : IUploadedFileCreator {
+        #endregion
+    }
 
-		public UploadedFile Create (string name)
-		{
-			string temp_file = Path.GetTempFileName ();
-			return new TempFileUploadedFile (name, temp_file);
-		}
-	}
+    public class InMemoryUploadedFileCreator : IUploadedFileCreator
+    {
+        #region IUploadedFileCreator Members
 
-	public class InMemoryUploadedFileCreator : IUploadedFileCreator {
+        public UploadedFile Create(string name)
+        {
+            return new InMemoryUploadedFile(name);
+        }
 
-		public UploadedFile Create (string name)
-		{
-			return new InMemoryUploadedFile (name);
-		}
-	}
-	
-	public abstract class UploadedFile : IDisposable {
+        #endregion
+    }
 
-	  	 public UploadedFile (string name)
-		 {
-			Name = name;
-		 }
+    public abstract class UploadedFile : IDisposable
+    {
+        public UploadedFile(string name)
+        {
+            Name = name;
+        }
 
-		~UploadedFile ()
-		{
-			Dispose ();
-		}
+        public string Name { get; private set; }
 
-		public string Name {
-		 	get;
-			private set;
-		 }
+        public string ContentType { get; set; }
 
-		public void Dispose ()
-		{
-			if (Contents != null)
-				Contents.Close ();
-		}
+        public abstract long Length { get; }
 
-		public string ContentType {
-		 	get;
-			set;
-		 }
+        public abstract Stream Contents { get; }
 
-		 public abstract long Length {
-		 	get;
-		 }
+        #region IDisposable Members
 
-		 public abstract Stream Contents {
-		 	get;
-		 }
+        public void Dispose()
+        {
+            if (Contents != null)
+                Contents.Close();
+        }
 
-		public virtual void Finish ()
-		{
-		}
-	  }
+        #endregion
 
-	  public class InMemoryUploadedFile : UploadedFile {
+        ~UploadedFile()
+        {
+            Dispose();
+        }
 
-		  private MemoryStream stream = new MemoryStream ();
+        public virtual void Finish()
+        {
+        }
+    }
 
-	  	 public InMemoryUploadedFile (string name) : base (name)
-		 {
-		 }
-		 
-		 public override long Length {
-		 	get {
-				return stream.Length;
-			}
-		 }
+    public class InMemoryUploadedFile : UploadedFile
+    {
+        private readonly MemoryStream stream = new MemoryStream();
 
-		 public override Stream Contents {
-		 	get {
-				return stream;
-			}
-		 }
+        public InMemoryUploadedFile(string name) : base(name)
+        {
+        }
 
-		  public override void Finish ()
-		  {
-			  stream.Position = 0;
-		  }
-	  }
+        public override long Length
+        {
+            get { return stream.Length; }
+        }
 
-	  public class TempFileUploadedFile : UploadedFile {
+        public override Stream Contents
+        {
+            get { return stream; }
+        }
 
-		  FileStream stream;
-		  
-	  	 public TempFileUploadedFile (string name, string temp_file) : base (name)
-		 {
-			TempFile = temp_file;
-		 }
-	  	 
-		 public string TempFile {
-		 	get;
-			private set;
-		 }
+        public override void Finish()
+        {
+            stream.Position = 0;
+        }
+    }
 
-		 public override long Length {
-		 	get {
-			    FileInfo f = new FileInfo (TempFile);
-			    return f.Length;
-			}
-		 }
+    public class TempFileUploadedFile : UploadedFile
+    {
+        private FileStream stream;
 
-		 public override Stream Contents {
-		 	get {
-				if (stream == null)
-					stream = File.Open (TempFile, FileMode.Open, FileAccess.ReadWrite);
-				return stream;
-			}
-		 }
+        public TempFileUploadedFile(string name, string temp_file) : base(name)
+        {
+            TempFile = temp_file;
+        }
 
-		 public override void Finish ()
-		 {
-			 stream.Flush ();
-			 stream.Close ();
-			 stream = null;
-		 }
-	  }
+        public string TempFile { get; private set; }
+
+        public override long Length
+        {
+            get
+            {
+                var f = new FileInfo(TempFile);
+                return f.Length;
+            }
+        }
+
+        public override Stream Contents
+        {
+            get
+            {
+                if (stream == null)
+                    stream = File.Open(TempFile, FileMode.Open, FileAccess.ReadWrite);
+                return stream;
+            }
+        }
+
+        public override void Finish()
+        {
+            stream.Flush();
+            stream.Close();
+            stream = null;
+        }
+    }
 }
-

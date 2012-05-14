@@ -23,16 +23,14 @@
 //
 
 
-
 using Manos.IO;
 
-namespace Manos.Http {
+namespace Manos.Http
+{
+    public interface IHttpBodyHandler
+    {
+        void HandleData(HttpEntity entity, ByteBuffer data, int pos, int len);
 
-	public interface IHttpBodyHandler {
-
-		void HandleData (HttpEntity entity, ByteBuffer data, int pos, int len);
-
-		void Finish (HttpEntity entity);
-	}
+        void Finish(HttpEntity entity);
+    }
 }
-

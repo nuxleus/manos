@@ -24,225 +24,209 @@
 
 
 using System;
-using System.IO;
-using System.Linq;
-using System.Reflection;
-using System.Collections;
 using System.Collections.Generic;
-
-using Manos;
-
-#if !DISABLE_POSIX
+using System.Diagnostics;
+using System.IO;
+using Manos.IO;
 using Mono.Unix.Native;
+#if !DISABLE_POSIX
+
 #endif
 
 namespace Manos.Tool
 {
-	public class ServerCommand
-	{
-		private ManosApp app;
-		
-		private int? port;
-		private int? securePort;
-		private string application_assembly;
-		
-		public ServerCommand (Environment env) : this (env, new List<string> ())
-		{
-		}
-		
-		public ServerCommand (Environment env, IList<string> args)
-		{
-			Environment = env;
-			Arguments = args;
-		}
-		
-		public Environment Environment {
-			get;
-			private set;
-		}
-		
-		public IList<string> Arguments {
-			get;
-			set;
-		}
-		
-		public string ApplicationAssembly {
-			get {
-				if (application_assembly == null)
-					return Path.GetFileName (Directory.GetCurrentDirectory ()) + ".dll";
-				return application_assembly;
-			}
-			set {
-				if (value == null)
-					throw new ArgumentNullException ("value");
-				application_assembly = value;
-			}
-		}
-		
-		public int Port {
-			get { 
-				if (port == null)
-					return 8080;
-				return (int) port;
-			}
-			set {
-				if (port <= 0)
-					throw new ArgumentException ("port", "port must be greater than zero.");
-				port = value;	
-			}
-		}
-		
-		public int? SecurePort {
-			get { 
-				return securePort;
-			}
-			set {
-				if (securePort <= 0)
-					throw new ArgumentException ("port", "port must be greater than zero.");
-				securePort = value;
-			}
-		}
+    public class ServerCommand
+    {
+        private ManosApp app;
+        private string application_assembly;
 
-		public string User {
-			get;
-			set;
-		}
+        private int? port;
+        private int? securePort;
 
-		public string IPAddress {
-			get;
-			set;
-		}
+        public ServerCommand(Environment env) : this(env, new List<string>())
+        {
+        }
 
-		public string CertificateFile {
-			get;
-			set;
-		}
+        public ServerCommand(Environment env, IList<string> args)
+        {
+            Environment = env;
+            Arguments = args;
+        }
 
-		public string KeyFile {
-			get;
-			set;
-		}
+        public Environment Environment { get; private set; }
 
-		public string Browse {
-			get;
-			set;
-		}
+        public IList<string> Arguments { get; set; }
 
-		public string DocumentRoot {
-			get;
-			set;
-		}
-		
-		public void Run ()
-		{
-			// Setup the document root
-			if (DocumentRoot != null)
-			{
-				System.IO.Directory.SetCurrentDirectory(System.IO.Path.Combine(System.IO.Directory.GetCurrentDirectory(), DocumentRoot));
-			}
+        public string ApplicationAssembly
+        {
+            get
+            {
+                if (application_assembly == null)
+                    return Path.GetFileName(Directory.GetCurrentDirectory()) + ".dll";
+                return application_assembly;
+            }
+            set
+            {
+                if (value == null)
+                    throw new ArgumentNullException("value");
+                application_assembly = value;
+            }
+        }
 
-			// Load the config.
-			ManosConfig.Load ();
-			
-			app = Loader.LoadLibrary<ManosApp> (ApplicationAssembly, Arguments);
-	
-			Console.WriteLine ("Running {0} on port {1}.", app, Port);
+        public int Port
+        {
+            get
+            {
+                if (port == null)
+                    return 8080;
+                return (int) port;
+            }
+            set
+            {
+                if (port <= 0)
+                    throw new ArgumentException("port", "port must be greater than zero.");
+                port = value;
+            }
+        }
 
-			if (User != null)
-				SetServerUser (User);
-			
-			var listenAddress = Manos.IO.IPAddress.Any;
-			
-			if (IPAddress != null)
-				listenAddress = Manos.IO.IPAddress.Parse (IPAddress);
+        public int? SecurePort
+        {
+            get { return securePort; }
+            set
+            {
+                if (securePort <= 0)
+                    throw new ArgumentException("port", "port must be greater than zero.");
+                securePort = value;
+            }
+        }
 
-			AppHost.ListenAt (new Manos.IO.IPEndPoint (listenAddress, Port));
-			if (SecurePort != null) {
-				AppHost.InitializeTLS ("NORMAL");
-				AppHost.SecureListenAt (new Manos.IO.IPEndPoint (listenAddress, SecurePort.Value), CertificateFile, KeyFile);
-				Console.WriteLine ("Running {0} on secure port {1}.", app, SecurePort);
-			}
+        public string User { get; set; }
 
-			if (Browse != null)
-			{
-				var hostname = IPAddress == null ? "http://localhost" : "http://" + IPAddress;
-				if (Port != 80)
-					hostname += ":" + Port.ToString();
+        public string IPAddress { get; set; }
 
-				if (Browse == "")
-				{
-					Browse = hostname;
-				}
-				if (Browse.StartsWith("/"))
-				{
-					Browse = hostname + Browse;
-				}
+        public string CertificateFile { get; set; }
 
-				if (!Browse.StartsWith("http://") && !Browse.StartsWith("https://"))
-					Browse = "http://" + Browse;
+        public string KeyFile { get; set; }
 
-				AppHost.AddTimeout(TimeSpan.FromMilliseconds(10), RepeatBehavior.Single, Browse, DoBrowse);
-			}
+        public string Browse { get; set; }
 
-			AppHost.Start (app);
-		}
+        public string DocumentRoot { get; set; }
 
-		private static void DoBrowse(ManosApp app, object user_data)
-		{
-			string BrowseTo = user_data as string;
-			Console.WriteLine("Launching {0}", BrowseTo);
-			System.Diagnostics.Process.Start(BrowseTo);
-		}
+        public void Run()
+        {
+            // Setup the document root
+            if (DocumentRoot != null)
+            {
+                Directory.SetCurrentDirectory(Path.Combine(Directory.GetCurrentDirectory(), DocumentRoot));
+            }
 
-		public void SetServerUser (string user)
-		{
-			if (user == null)
-				throw new ArgumentNullException ("user");
+            // Load the config.
+            ManosConfig.Load();
 
-			PlatformID pid = System.Environment.OSVersion.Platform;
-			if (pid != PlatformID.Unix /* && pid != PlatformID.MacOSX */) {
-				// TODO: Not sure if this works on OSX yet.
+            app = Loader.LoadLibrary<ManosApp>(ApplicationAssembly, Arguments);
 
-				//
-				// Throw an exception here, we don't want to silently fail
-				// otherwise people might be unknowingly running as root
-				//
+            Console.WriteLine("Running {0} on port {1}.", app, Port);
 
-				throw new InvalidOperationException ("User can not be set on Windows platforms.");
-			}
+            if (User != null)
+                SetServerUser(User);
 
-			AppHost.AddTimeout (TimeSpan.Zero, RepeatBehavior.Single, user, DoSetUser);
-		}
+            IPAddress listenAddress = IO.IPAddress.Any;
+
+            if (IPAddress != null)
+                listenAddress = IO.IPAddress.Parse(IPAddress);
+
+            AppHost.ListenAt(new IPEndPoint(listenAddress, Port));
+            if (SecurePort != null)
+            {
+                AppHost.InitializeTLS("NORMAL");
+                AppHost.SecureListenAt(new IPEndPoint(listenAddress, SecurePort.Value), CertificateFile, KeyFile);
+                Console.WriteLine("Running {0} on secure port {1}.", app, SecurePort);
+            }
+
+            if (Browse != null)
+            {
+                string hostname = IPAddress == null ? "http://localhost" : "http://" + IPAddress;
+                if (Port != 80)
+                    hostname += ":" + Port;
+
+                if (Browse == "")
+                {
+                    Browse = hostname;
+                }
+                if (Browse.StartsWith("/"))
+                {
+                    Browse = hostname + Browse;
+                }
+
+                if (!Browse.StartsWith("http://") && !Browse.StartsWith("https://"))
+                    Browse = "http://" + Browse;
+
+                AppHost.AddTimeout(TimeSpan.FromMilliseconds(10), RepeatBehavior.Single, Browse, DoBrowse);
+            }
+
+            AppHost.Start(app);
+        }
+
+        private static void DoBrowse(ManosApp app, object user_data)
+        {
+            var BrowseTo = user_data as string;
+            Console.WriteLine("Launching {0}", BrowseTo);
+            Process.Start(BrowseTo);
+        }
+
+        public void SetServerUser(string user)
+        {
+            if (user == null)
+                throw new ArgumentNullException("user");
+
+            PlatformID pid = System.Environment.OSVersion.Platform;
+            if (pid != PlatformID.Unix /* && pid != PlatformID.MacOSX */)
+            {
+                // TODO: Not sure if this works on OSX yet.
+
+                //
+                // Throw an exception here, we don't want to silently fail
+                // otherwise people might be unknowingly running as root
+                //
+
+                throw new InvalidOperationException("User can not be set on Windows platforms.");
+            }
+
+            AppHost.AddTimeout(TimeSpan.Zero, RepeatBehavior.Single, user, DoSetUser);
+        }
 
 
-		private void DoSetUser (ManosApp app, object user_data)
-		{
+        private void DoSetUser(ManosApp app, object user_data)
+        {
 #if DISABLE_POSIX
 			throw new InvalidOperationException ("Attempt to set user on a non-posix build.");
 #else
-			string user = user_data as string;
+            var user = user_data as string;
 
-			Console.WriteLine ("setting user to: '{0}'", user);
-			
-			if (user == null) {
-				AppHost.Stop ();
-				throw new InvalidOperationException (String.Format ("Attempting to set user to null."));
-			}
-			
-			Passwd pwd = Syscall.getpwnam (user);
-			if (pwd == null) {
-				AppHost.Stop ();
-				throw new InvalidOperationException (String.Format ("Unable to find user '{0}'.", user));
-			}
+            Console.WriteLine("setting user to: '{0}'", user);
 
-			int error = Syscall.seteuid (pwd.pw_uid);
-			if (error != 0) {
-				AppHost.Stop ();
-				throw new InvalidOperationException (String.Format ("Unable to switch to user '{0}' error: '{1}'.", user, error));
-			}
-			
+            if (user == null)
+            {
+                AppHost.Stop();
+                throw new InvalidOperationException(String.Format("Attempting to set user to null."));
+            }
+
+            Passwd pwd = Syscall.getpwnam(user);
+            if (pwd == null)
+            {
+                AppHost.Stop();
+                throw new InvalidOperationException(String.Format("Unable to find user '{0}'.", user));
+            }
+
+            int error = Syscall.seteuid(pwd.pw_uid);
+            if (error != 0)
+            {
+                AppHost.Stop();
+                throw new InvalidOperationException(String.Format("Unable to switch to user '{0}' error: '{1}'.", user,
+                                                                  error));
+            }
+
 #endif
-		}
-
-	}
+        }
+    }
 }

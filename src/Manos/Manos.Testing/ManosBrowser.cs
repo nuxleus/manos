@@ -23,143 +23,151 @@
 //
 
 using System;
+using System.Collections.Generic;
+using Manos.Collections;
 using Manos.Http;
 using Manos.Http.Testing;
-using Manos.Collections;
-using System.Collections.Generic;
 
 namespace Manos.Testing
 {
-	public static class DataDictionaryExtension
-	{
-		public static void CopyCookies (this DataDictionary reqCookies, Dictionary<string, HttpCookie> resCookie)
-		{
-			foreach (string key in resCookie.Keys) {
-				// get the value - not sure how this will cope with multi value cookie
-				reqCookies[key] = resCookie[key].Values[key];
-			}
-		}
-	}
-	
-	public class With
-	{
-		DataDictionary _dict;
-		MockHttpRequest _request;
-		
-		public With (MockHttpRequest request, DataDictionary dict)
-		{
-			_request = request;
-			_dict = dict;
-		}
-		
-		public void Parameter (string name, string value)
-		{
-			_dict[name] = value;
-		}
-		
-		public void Header (string name, string value)
-		{
-			_request.Headers.SetHeader (name, value);
-		}
-		
-		public void Cookie (string name, string value)
-		{
-			_request.Cookies[name] = value;
-		}
+    public static class DataDictionaryExtension
+    {
+        public static void CopyCookies(this DataDictionary reqCookies, Dictionary<string, HttpCookie> resCookie)
+        {
+            foreach (string key in resCookie.Keys)
+            {
+                // get the value - not sure how this will cope with multi value cookie
+                reqCookies[key] = resCookie[key].Values[key];
+            }
+        }
+    }
 
-		public void PostBody (string value)
-		{
-			_request.PostBody = value;
-		}
-	}
-	
-	public class ManosBrowser
-	{
-		public MockHttpRequest Request { get; private set; }
-		public MockHttpResponse Response { get; private set; }
-		public MockHttpTransaction Transaction { get; private set; }
-		
-		private ManosApp _app;
+    public class With
+    {
+        private readonly DataDictionary _dict;
+        private readonly MockHttpRequest _request;
 
-		public ManosBrowser (ManosApp app)
-		{
-			_app = app;
-			_app.StartInternal ();
-			
-			Request = new MockHttpRequest ();
-			Response = new MockHttpResponse ();
-			Transaction = new MockHttpTransaction (Request, Response);
-		}
-		
-		public void MakeRequest ()
-		{
-			// copy cookies
-			Request.Cookies.CopyCookies (Response.Cookies);
-			
-			_app.HandleTransaction (_app, Transaction);
-			
-			Request.Reset ();
-		}
-		
-		public void Get (string url)
-		{
-			Get (url, null);
-		}
-			
-		public void Get (string url, Action<With> fn)
-		{
-			Request.Method = HttpMethod.HTTP_GET;
-			Request.Path = url;
-			
-			if (null != fn) {
-				With w = new With (Request, Request.QueryData);
-				fn (w);
-			}
-			
-			MakeRequest ();
-		}
-				
-		public void Post (string url)
-		{
-			Post (url, null);
-		}
-		
-		public void Post (string url, Action<With> fn)
-		{
-			Request.Method = HttpMethod.HTTP_POST;
-			Request.Path = url;
-			
-			if (null != fn) {
-				With w = new With (Request, Request.PostData);
-				fn (w);
-			}
-			
-			MakeRequest ();
-		}
-		
-		public int StatusCode
-		{
-			get { return Response.StatusCode; }
-		}
-		
-		public string ResponseString {
-			get { return Transaction.ResponseString; }
-		}
-		
-		public string RedirectedUrl {
-			get { return Response.RedirectedUrl; }
-		}
-		
-		public string ContentType {
-			get { 
-				string value;
-				
-				if(Response.Headers.TryGetValue("Content-Type", out value)) {
-					return value;
-				}
-				
-				return string.Empty;
-			}
-		}
-	}
+        public With(MockHttpRequest request, DataDictionary dict)
+        {
+            _request = request;
+            _dict = dict;
+        }
+
+        public void Parameter(string name, string value)
+        {
+            _dict[name] = value;
+        }
+
+        public void Header(string name, string value)
+        {
+            _request.Headers.SetHeader(name, value);
+        }
+
+        public void Cookie(string name, string value)
+        {
+            _request.Cookies[name] = value;
+        }
+
+        public void PostBody(string value)
+        {
+            _request.PostBody = value;
+        }
+    }
+
+    public class ManosBrowser
+    {
+        private readonly ManosApp _app;
+
+        public ManosBrowser(ManosApp app)
+        {
+            _app = app;
+            _app.StartInternal();
+
+            Request = new MockHttpRequest();
+            Response = new MockHttpResponse();
+            Transaction = new MockHttpTransaction(Request, Response);
+        }
+
+        public MockHttpRequest Request { get; private set; }
+        public MockHttpResponse Response { get; private set; }
+        public MockHttpTransaction Transaction { get; private set; }
+
+        public int StatusCode
+        {
+            get { return Response.StatusCode; }
+        }
+
+        public string ResponseString
+        {
+            get { return Transaction.ResponseString; }
+        }
+
+        public string RedirectedUrl
+        {
+            get { return Response.RedirectedUrl; }
+        }
+
+        public string ContentType
+        {
+            get
+            {
+                string value;
+
+                if (Response.Headers.TryGetValue("Content-Type", out value))
+                {
+                    return value;
+                }
+
+                return string.Empty;
+            }
+        }
+
+        public void MakeRequest()
+        {
+            // copy cookies
+            Request.Cookies.CopyCookies(Response.Cookies);
+
+            _app.HandleTransaction(_app, Transaction);
+
+            Request.Reset();
+        }
+
+        public void Get(string url)
+        {
+            Get(url, null);
+        }
+
+        public void Get(string url, Action<With> fn)
+        {
+            Request.Method = HttpMethod.HTTP_GET;
+            Request.Path = url;
+
+            if (null != fn)
+            {
+                var w = new With(Request, Request.QueryData);
+                fn(w);
+            }
+
+            MakeRequest();
+        }
+
+        public void Post(string url)
+        {
+            Post(url, null);
+        }
+
+        public void Post(string url, Action<With> fn)
+        {
+            Request.Method = HttpMethod.HTTP_POST;
+            Request.Path = url;
+
+            if (null != fn)
+            {
+                var w = new With(Request, Request.PostData);
+                fn(w);
+            }
+
+            MakeRequest();
+        }
+    }
 }

@@ -2,30 +2,30 @@ using System;
 
 namespace Manos.IO.Managed
 {
-	class PrepareWatcher : Watcher, IPrepareWatcher
-	{
-		private Action cb;
+    internal class PrepareWatcher : Watcher, IPrepareWatcher
+    {
+        private readonly Action cb;
 
-		public PrepareWatcher (Context context, Action callback)
-			: base (context)
-		{
-			if (callback == null)
-				throw new ArgumentNullException ("callback");
-			
-			this.cb = callback;
-		}
+        public PrepareWatcher(Context context, Action callback)
+            : base(context)
+        {
+            if (callback == null)
+                throw new ArgumentNullException("callback");
 
-		public void Invoke ()
-		{
-			if (IsRunning) {
-				cb ();
-			}
-		}
+            cb = callback;
+        }
 
-		protected override void Dispose (bool disposing)
-		{
-			Context.Remove (this);
-		}
-	}
+        public void Invoke()
+        {
+            if (IsRunning)
+            {
+                cb();
+            }
+        }
+
+        protected override void Dispose(bool disposing)
+        {
+            Context.Remove(this);
+        }
+    }
 }
-

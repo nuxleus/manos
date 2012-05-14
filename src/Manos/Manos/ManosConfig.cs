@@ -24,137 +24,137 @@
 //
 
 using System;
-using Nini.Config;
 using System.IO;
+using Nini.Config;
 
 namespace Manos
 {
-	/// <summary>
-	/// Manos config. The config file being loaded is in .ini format that
-	/// contains of one or more sections, the main section is what this
-	/// API uses. However if wanting to access different sections, one can
-	/// go through the Source to access the nini IConfigSource.
-	/// 
-	/// The configs are loaded from $MANOS_CONFIG first, but if that variable
-	/// is not set it will look for manos.config within the current directory.
-	/// If neither are found, the config is left empty.
-	/// 
-	/// Here is an example config:
-	/// 
-	/// [manos]
-	/// database_user = ahall
-	/// database_password = temp123
-	/// database_name = mydb
-	/// database_hostname = localhost
-	/// database_type = postgresql
-	/// 
-	/// Getting the db user is as simple as ManosConfig.GetString("database_user");
-	/// </summary>
-	public static class ManosConfig {
-		public static IConfigSource Source { get; private set; }
-		public static IConfig Main { get; private set; }
-		private const string MAIN_SECTION = "manos";
-		
-		public static void Load ()
-		{
-			string source = Environment.GetEnvironmentVariable ("MANOS_CONFIG") ??
-                    Path.Combine (Environment.CurrentDirectory, "manos.config");
-			if (!File.Exists(source))
-				return;
+    /// <summary>
+    /// Manos config. The config file being loaded is in .ini format that
+    /// contains of one or more sections, the main section is what this
+    /// API uses. However if wanting to access different sections, one can
+    /// go through the Source to access the nini IConfigSource.
+    /// 
+    /// The configs are loaded from $MANOS_CONFIG first, but if that variable
+    /// is not set it will look for manos.config within the current directory.
+    /// If neither are found, the config is left empty.
+    /// 
+    /// Here is an example config:
+    /// 
+    /// [manos]
+    /// database_user = ahall
+    /// database_password = temp123
+    /// database_name = mydb
+    /// database_hostname = localhost
+    /// database_type = postgresql
+    /// 
+    /// Getting the db user is as simple as ManosConfig.GetString("database_user");
+    /// </summary>
+    public static class ManosConfig
+    {
+        private const string MAIN_SECTION = "manos";
+        public static IConfigSource Source { get; private set; }
+        public static IConfig Main { get; private set; }
 
-			Source = new IniConfigSource(source);
-			Main = Source.Configs[MAIN_SECTION];
-		}
-		
-		public static void Set (string key, object value)
-		{
-			Main.Set(key, value);
-		}
-		
-		public static string Get (string key)
-		{
-			return Main.Get (key);
-		}
-		
-		public static string Get (string key, string defaultValue)
-		{
-			return Main.Get (key, defaultValue);
-		}
-		
-		public static string GetString (string key)
-		{
-			return Main.GetString (key);
-		}
-		
-		public static string GetString (string key, string defaultValue)
-		{
-			return Main.GetString (key, defaultValue);
-		}
-		
-		public static double GetDouble (string key)
-		{
-			return Main.GetDouble (key);
-		}
-		
-		public static double GetDouble (string key, double defaultValue)
-		{
-			return Main.GetDouble (key, defaultValue);
-		}
-		
-		public static string GetExpanded (string key)
-		{
-			return Main.GetExpanded (key);
-		}
-		
-		public static float GetFloat (string key)
-		{
-			return Main.GetFloat (key);
-		}
-		
-		public static float GetFloat (string key, float defaultValue)
-		{
-			return Main.GetFloat (key, defaultValue);
-		}
-		
-		public static int GetInt (string key)
-		{
-			return Main.GetInt (key);
-		}
-		
-		public static int GetInt (string key, int defaultValue)
-		{
-			return Main.GetInt (key, defaultValue);
-		}
-		
-		public static bool GetBoolean (string key)
-		{
-			return Main.GetBoolean (key);
-		}
-		
-		public static bool GetBoolean (string key, bool defaultValue)
-		{
-			return Main.GetBoolean (key, defaultValue);
-		}
-		
-		public static string[] GetKeys ()
-		{
-			return Main.GetKeys();
-		}
-		
-		public static string[] GetValues ()
-		{
-			return Main.GetValues();
-		}
-		
-		public static long GetLong (string key)
-		{
-			return Main.GetLong (key);
-		}
-		
-		public static long GetLong (string key, long defaultValue)
-		{
-			return Main.GetLong (key, defaultValue);
-		}
+        public static void Load()
+        {
+            string source = Environment.GetEnvironmentVariable("MANOS_CONFIG") ??
+                            Path.Combine(Environment.CurrentDirectory, "manos.config");
+            if (!File.Exists(source))
+                return;
+
+            Source = new IniConfigSource(source);
+            Main = Source.Configs[MAIN_SECTION];
+        }
+
+        public static void Set(string key, object value)
+        {
+            Main.Set(key, value);
+        }
+
+        public static string Get(string key)
+        {
+            return Main.Get(key);
+        }
+
+        public static string Get(string key, string defaultValue)
+        {
+            return Main.Get(key, defaultValue);
+        }
+
+        public static string GetString(string key)
+        {
+            return Main.GetString(key);
+        }
+
+        public static string GetString(string key, string defaultValue)
+        {
+            return Main.GetString(key, defaultValue);
+        }
+
+        public static double GetDouble(string key)
+        {
+            return Main.GetDouble(key);
+        }
+
+        public static double GetDouble(string key, double defaultValue)
+        {
+            return Main.GetDouble(key, defaultValue);
+        }
+
+        public static string GetExpanded(string key)
+        {
+            return Main.GetExpanded(key);
+        }
+
+        public static float GetFloat(string key)
+        {
+            return Main.GetFloat(key);
+        }
+
+        public static float GetFloat(string key, float defaultValue)
+        {
+            return Main.GetFloat(key, defaultValue);
+        }
+
+        public static int GetInt(string key)
+        {
+            return Main.GetInt(key);
+        }
+
+        public static int GetInt(string key, int defaultValue)
+        {
+            return Main.GetInt(key, defaultValue);
+        }
+
+        public static bool GetBoolean(string key)
+        {
+            return Main.GetBoolean(key);
+        }
+
+        public static bool GetBoolean(string key, bool defaultValue)
+        {
+            return Main.GetBoolean(key, defaultValue);
+        }
+
+        public static string[] GetKeys()
+        {
+            return Main.GetKeys();
+        }
+
+        public static string[] GetValues()
+        {
+            return Main.GetValues();
+        }
+
+        public static long GetLong(string key)
+        {
+            return Main.GetLong(key);
+        }
+
+        public static long GetLong(string key, long defaultValue)
+        {
+            return Main.GetLong(key, defaultValue);
+        }
     }
 }
-

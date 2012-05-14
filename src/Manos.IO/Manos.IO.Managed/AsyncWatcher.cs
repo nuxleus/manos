@@ -2,47 +2,52 @@ using System;
 
 namespace Manos.IO.Managed
 {
-	class AsyncWatcher : Watcher, Manos.IO.IAsyncWatcher
-	{
-		private bool pending;
-		private Action callback;
+    internal class AsyncWatcher : Watcher, IAsyncWatcher
+    {
+        private readonly Action callback;
+        private bool pending;
 
-		public AsyncWatcher (Context context, Action callback)
-			: base (context)
-		{
-			if (callback == null)
-				throw new ArgumentNullException ("callback");
-			
-			this.callback = callback;
-		}
+        public AsyncWatcher(Context context, Action callback)
+            : base(context)
+        {
+            if (callback == null)
+                throw new ArgumentNullException("callback");
 
-		public void Send ()
-		{
-			if (!pending && IsRunning) {
-				Context.Enqueue (delegate {
-					pending = false;
-					callback ();
-				});
-				pending = true;
-			}
-		}
+            this.callback = callback;
+        }
 
-		public override void Start ()
-		{
-			base.Start ();
-			pending = false;
-		}
+        #region IAsyncWatcher Members
 
-		public override void Stop ()
-		{
-			base.Stop ();
-			pending = false;
-		}
+        public void Send()
+        {
+            if (!pending && IsRunning)
+            {
+                Context.Enqueue(delegate
+                                    {
+                                        pending = false;
+                                        callback();
+                                    });
+                pending = true;
+            }
+        }
 
-		protected override void Dispose (bool disposing)
-		{
-			Context.Remove (this);
-		}
-	}
+        public override void Start()
+        {
+            base.Start();
+            pending = false;
+        }
+
+        public override void Stop()
+        {
+            base.Stop();
+            pending = false;
+        }
+
+        #endregion
+
+        protected override void Dispose(bool disposing)
+        {
+            Context.Remove(this);
+        }
+    }
 }
-

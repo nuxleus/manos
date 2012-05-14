@@ -1,131 +1,134 @@
 using System;
 using System.Runtime.InteropServices;
-using System.Net.Sockets;
 
 namespace Libev
 {
-	class Loop
-	{
-		private IntPtr _native;
-		private GCHandle _handle;
-		private static readonly bool _isV4;
+    internal class Loop
+    {
+        private static readonly bool _isV4;
+        private GCHandle _handle;
+        private IntPtr _native;
 
-		static Loop ()
-		{
-			_isV4 = ev_version_major () >= 4;
-		}
+        static Loop()
+        {
+            _isV4 = ev_version_major() >= 4;
+        }
 
-		public static bool IsV4 { get { return _isV4; } }
+        public Loop()
+        {
+            int backends = ev_supported_backends();
+            if (backends == 0)
+                throw new InvalidOperationException("No supported backend in libev");
 
-		public Loop ()
-		{
-			int backends = ev_supported_backends ();
-			if (backends == 0)
-				throw new InvalidOperationException ("No supported backend in libev");
-			
-			_native = ev_loop_new (0);
-			
-			if (_native == IntPtr.Zero)
-				throw new Exception ("Unable to create native loop");
-			
-			_handle = GCHandle.Alloc (this);
-		}
+            _native = ev_loop_new(0);
 
-		~Loop ()
-		{
-			Dispose ();
-		}
+            if (_native == IntPtr.Zero)
+                throw new Exception("Unable to create native loop");
 
-		public IntPtr Handle {
-			get {
-				ThrowIfDisposed ();
-				return _native; 
-			}
-		}
+            _handle = GCHandle.Alloc(this);
+        }
 
-		public void Dispose ()
-		{
-			if (_native == IntPtr.Zero)
-				return;
-			
-			ev_loop_destroy (_native);
-			_native = IntPtr.Zero;
-			_handle.Free ();
-		}
+        public static bool IsV4
+        {
+            get { return _isV4; }
+        }
 
-		public void RunBlocking ()
-		{
-			ThrowIfDisposed ();
-			
-			Run (LoopType.Blocking);
-		}
+        public IntPtr Handle
+        {
+            get
+            {
+                ThrowIfDisposed();
+                return _native;
+            }
+        }
 
-		public void RunNonBlocking ()
-		{
-			ThrowIfDisposed ();
-			
-			Run (LoopType.NonBlocking);
-		}
+        ~Loop()
+        {
+            Dispose();
+        }
 
-		public void RunOneShot ()
-		{
-			ThrowIfDisposed ();
-			
-			Run (LoopType.Oneshot);
-		}
+        public void Dispose()
+        {
+            if (_native == IntPtr.Zero)
+                return;
 
-		public void Run (LoopType type)
-		{
-			ThrowIfDisposed ();
+            ev_loop_destroy(_native);
+            _native = IntPtr.Zero;
+            _handle.Free();
+        }
 
-			if (IsV4)
-				ev_run (_native, type);
-			else
-				ev_loop (_native, type);
-		}
+        public void RunBlocking()
+        {
+            ThrowIfDisposed();
 
-		public void Unloop (UnloopType type)
-		{
-			ThrowIfDisposed ();
+            Run(LoopType.Blocking);
+        }
 
-			if (IsV4)
-				ev_break (_native, type);
-			else 
-				ev_unloop (_native, type);
-		}
+        public void RunNonBlocking()
+        {
+            ThrowIfDisposed();
 
-		private void ThrowIfDisposed ()
-		{
-			if (_native == IntPtr.Zero)
-				throw new ObjectDisposedException ("native object has been disposed.");
-		}
+            Run(LoopType.NonBlocking);
+        }
 
-		[DllImport ("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern int ev_version_major ();
+        public void RunOneShot()
+        {
+            ThrowIfDisposed();
 
-		[DllImport ("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern int ev_version_minor ();
+            Run(LoopType.Oneshot);
+        }
 
-		[DllImport ("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern IntPtr ev_loop_new (uint flags);
+        public void Run(LoopType type)
+        {
+            ThrowIfDisposed();
 
-		[DllImport ("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern void ev_loop (IntPtr loop, LoopType type);
+            if (IsV4)
+                ev_run(_native, type);
+            else
+                ev_loop(_native, type);
+        }
 
-		[DllImport ("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern void ev_loop_destroy (IntPtr loop);
+        public void Unloop(UnloopType type)
+        {
+            ThrowIfDisposed();
 
-		[DllImport ("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern void ev_unloop (IntPtr loop, UnloopType flags);
+            if (IsV4)
+                ev_break(_native, type);
+            else
+                ev_unloop(_native, type);
+        }
 
-		[DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern void ev_run (IntPtr loop, LoopType type);
+        private void ThrowIfDisposed()
+        {
+            if (_native == IntPtr.Zero)
+                throw new ObjectDisposedException("native object has been disposed.");
+        }
 
-		[DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern void ev_break (IntPtr loop, UnloopType flags);
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int ev_version_major();
 
-		[DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
-		private static extern int ev_supported_backends ();
-	}
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int ev_version_minor();
+
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern IntPtr ev_loop_new(uint flags);
+
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ev_loop(IntPtr loop, LoopType type);
+
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ev_loop_destroy(IntPtr loop);
+
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ev_unloop(IntPtr loop, UnloopType flags);
+
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ev_run(IntPtr loop, LoopType type);
+
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern void ev_break(IntPtr loop, UnloopType flags);
+
+        [DllImport("libev", CallingConvention = CallingConvention.Cdecl)]
+        private static extern int ev_supported_backends();
+    }
 }
-

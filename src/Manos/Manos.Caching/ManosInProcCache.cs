@@ -23,127 +23,134 @@
 //
 
 
-
 using System;
 using System.Collections.Generic;
 
 namespace Manos.Caching
 {
-	public class ManosInProcCache : IManosCache
-	{
-		public class CacheItem {
-			public bool IsRemoved;
-			public string Key;
-			public object Item;
-			
-			public CacheItem (string key, object item)
-			{
-				Key = key;
-				Item = item;
-			}
-		}
-		
-		private Dictionary<string,CacheItem> items = new Dictionary<string, CacheItem> ();
+    public class ManosInProcCache : IManosCache
+    {
+        private readonly Dictionary<string, CacheItem> items = new Dictionary<string, CacheItem>();
 
-		public void Get (string key, CacheItemCallback callback)
-		{
-			CacheItem item;
-			object res = null;
+        #region IManosCache Members
 
-			if (key == null)
-				throw new ArgumentNullException ("key");
-			if (callback == null)
-				throw new ArgumentNullException ("callback");
+        public void Get(string key, CacheItemCallback callback)
+        {
+            CacheItem item;
+            object res = null;
 
-			if (items.TryGetValue (key, out item))
-				res = item.Item;
+            if (key == null)
+                throw new ArgumentNullException("key");
+            if (callback == null)
+                throw new ArgumentNullException("callback");
 
-			callback (key, res);
-		}
+            if (items.TryGetValue(key, out item))
+                res = item.Item;
 
-		public void Set (string key, object value)
-		{
-			SetInternal (key, value);
-		}
+            callback(key, res);
+        }
 
-		public void Set (string key, object value, TimeSpan expires)
-		{
-			Set (key, value, expires, delegate {
-			});
-		}
+        public void Set(string key, object value)
+        {
+            SetInternal(key, value);
+        }
 
-		public void Set (string key, object value, CacheItemCallback callback)
-		{
-			SetInternal (key, value);
+        public void Set(string key, object value, TimeSpan expires)
+        {
+            Set(key, value, expires, delegate { });
+        }
 
-			if (callback != null)
-				callback (key, value);
-		}
+        public void Set(string key, object value, CacheItemCallback callback)
+        {
+            SetInternal(key, value);
 
-		public void Set (string key, object value, TimeSpan expires, CacheItemCallback callback)
-		{
-			CacheItem item = SetInternal (key, value);
-			
-			AppHost.AddTimeout (expires, RepeatBehavior.Single, item, HandleExpires);
+            if (callback != null)
+                callback(key, value);
+        }
 
-			if (callback != null)
-				callback (key, value);
-		}
+        public void Set(string key, object value, TimeSpan expires, CacheItemCallback callback)
+        {
+            CacheItem item = SetInternal(key, value);
 
-		public void Remove (string key)
-		{
-			Remove (key, null);
-		}
+            AppHost.AddTimeout(expires, RepeatBehavior.Single, item, HandleExpires);
 
-		public void Remove (string key, CacheItemCallback callback)
-		{
-			CacheItem item;
-			object value = null;
-				
-			if (items.TryGetValue (key, out item)) {
-				item.IsRemoved = true;
-				items.Remove (key);
-				value = item.Item;
-			}
+            if (callback != null)
+                callback(key, value);
+        }
 
-			if (callback != null)
-				callback (key, value);
-		}
-		
-		public void Clear ()
-		{
-			items.Clear ();	
-		}
+        public void Remove(string key)
+        {
+            Remove(key, null);
+        }
 
-		public void Clear (CacheOpCallback callback)
-		{
-			items.Clear ();
+        public void Remove(string key, CacheItemCallback callback)
+        {
+            CacheItem item;
+            object value = null;
 
-			if (callback != null)
-				callback ();
-		}
-		
-		protected CacheItem SetInternal (string key, object value)
-		{
-			CacheItem item = null;
-			if (items.TryGetValue (key, out item))
-				item.IsRemoved = true;
-			
-			item = new CacheItem (key, value);
-			items [key] = item;
+            if (items.TryGetValue(key, out item))
+            {
+                item.IsRemoved = true;
+                items.Remove(key);
+                value = item.Item;
+            }
 
-			return item;
-		}
-		
-		protected virtual void HandleExpires (ManosApp app, object obj_item)
-		{
-			CacheItem item = (CacheItem) obj_item;
-			if (item.IsRemoved)
-				return;
-			
-			item.IsRemoved = true;
-			items.Remove (item.Key);
-		}
-	}
+            if (callback != null)
+                callback(key, value);
+        }
+
+        public void Clear()
+        {
+            items.Clear();
+        }
+
+        public void Clear(CacheOpCallback callback)
+        {
+            items.Clear();
+
+            if (callback != null)
+                callback();
+        }
+
+        #endregion
+
+        protected CacheItem SetInternal(string key, object value)
+        {
+            CacheItem item = null;
+            if (items.TryGetValue(key, out item))
+                item.IsRemoved = true;
+
+            item = new CacheItem(key, value);
+            items[key] = item;
+
+            return item;
+        }
+
+        protected virtual void HandleExpires(ManosApp app, object obj_item)
+        {
+            var item = (CacheItem) obj_item;
+            if (item.IsRemoved)
+                return;
+
+            item.IsRemoved = true;
+            items.Remove(item.Key);
+        }
+
+        #region Nested type: CacheItem
+
+        public class CacheItem
+        {
+            public bool IsRemoved;
+            public object Item;
+            public string Key;
+
+            public CacheItem(string key, object item)
+            {
+                Key = key;
+                Item = item;
+            }
+        }
+
+        #endregion
+    }
 }
-

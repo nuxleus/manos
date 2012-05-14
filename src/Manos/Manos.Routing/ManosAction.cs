@@ -23,19 +23,14 @@
 //
 
 
-
-using System;
-
-namespace Manos.Routing {
-	
-	/// <summary>
-	/// A delegate type that accepts an IManosContext and returns void.
-	/// </summary>
-	/// <remarks>
-	/// ATT: is this really necessary? Action&gt;IManosContext&lt; could be used in place of this, 
-	/// and would require consumers of Manos to understand fewer classes.
-	/// </remarks>
-	public delegate void ManosAction (IManosContext context);
-	
+namespace Manos.Routing
+{
+    /// <summary>
+    /// A delegate type that accepts an IManosContext and returns void.
+    /// </summary>
+    /// <remarks>
+    /// ATT: is this really necessary? Action&gt;IManosContext&lt; could be used in place of this, 
+    /// and would require consumers of Manos to understand fewer classes.
+    /// </remarks>
+    public delegate void ManosAction(IManosContext context);
 }
-

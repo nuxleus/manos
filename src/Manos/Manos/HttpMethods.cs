@@ -23,37 +23,36 @@
 //
 
 
-using System;
-
 using Manos.Http;
 
-namespace Manos {
-	
-	/// <summary>
-	/// Static lookups for each of the http verbs, and then an array with all of them.
-	/// </summary>
-	/// <remarks>
-	/// ATT: not sure what the purpose of these are, couldn't one just use enum with the "Flags" attribute? 
-	/// Maybe this is a special performance thing?
-	/// </remarks>
-	public static class HttpMethods {
+namespace Manos
+{
+    /// <summary>
+    /// Static lookups for each of the http verbs, and then an array with all of them.
+    /// </summary>
+    /// <remarks>
+    /// ATT: not sure what the purpose of these are, couldn't one just use enum with the "Flags" attribute? 
+    /// Maybe this is a special performance thing?
+    /// </remarks>
+    public static class HttpMethods
+    {
+        public static readonly HttpMethod[] GetMethods = new[] {HttpMethod.HTTP_GET};
+        public static readonly HttpMethod[] HeadMethods = new[] {HttpMethod.HTTP_HEAD};
+        public static readonly HttpMethod[] PostMethods = new[] {HttpMethod.HTTP_POST};
+        public static readonly HttpMethod[] PutMethods = new[] {HttpMethod.HTTP_PUT};
+        public static readonly HttpMethod[] DeleteMethods = new[] {HttpMethod.HTTP_DELETE};
+        public static readonly HttpMethod[] TraceMethods = new[] {HttpMethod.HTTP_TRACE};
+        public static readonly HttpMethod[] OptionsMethods = new[] {HttpMethod.HTTP_OPTIONS};
 
-		public static readonly HttpMethod [] GetMethods = new HttpMethod [] { HttpMethod.HTTP_GET };
-		public static readonly HttpMethod [] HeadMethods = new HttpMethod [] { HttpMethod.HTTP_HEAD };
-		public static readonly HttpMethod [] PostMethods = new HttpMethod [] { HttpMethod.HTTP_POST };
-		public static readonly HttpMethod [] PutMethods = new HttpMethod [] { HttpMethod.HTTP_PUT };
-		public static readonly HttpMethod [] DeleteMethods = new HttpMethod [] { HttpMethod.HTTP_DELETE };
-		public static readonly HttpMethod [] TraceMethods = new HttpMethod [] { HttpMethod.HTTP_TRACE };
-		public static readonly HttpMethod [] OptionsMethods = new HttpMethod [] { HttpMethod.HTTP_OPTIONS };
-		
-		public static readonly HttpMethod [] RouteMethods = new HttpMethod [] { HttpMethod.HTTP_GET,
-											HttpMethod.HTTP_PUT,
-											HttpMethod.HTTP_POST,
-											HttpMethod.HTTP_HEAD,
-											HttpMethod.HTTP_DELETE,
-											HttpMethod.HTTP_TRACE,
-											HttpMethod.HTTP_OPTIONS };
-
-	}
+        public static readonly HttpMethod[] RouteMethods = new[]
+                                                               {
+                                                                   HttpMethod.HTTP_GET,
+                                                                   HttpMethod.HTTP_PUT,
+                                                                   HttpMethod.HTTP_POST,
+                                                                   HttpMethod.HTTP_HEAD,
+                                                                   HttpMethod.HTTP_DELETE,
+                                                                   HttpMethod.HTTP_TRACE,
+                                                                   HttpMethod.HTTP_OPTIONS
+                                                               };
+    }
 }
-
