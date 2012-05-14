@@ -33,3 +33,5 @@ configure
 *.pc
 missing
 .*.swp
+packages
+
