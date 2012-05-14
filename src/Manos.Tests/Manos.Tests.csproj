@@ -10,6 +10,8 @@
     <RootNamespace>Manos.Tests</RootNamespace>
     <AssemblyName>Manos.Tests</AssemblyName>
     <TargetFrameworkVersion>v4.0</TargetFrameworkVersion>
+    <SolutionDir Condition="$(SolutionDir) == '' Or $(SolutionDir) == '*Undefined*'">..\</SolutionDir>
+    <RestorePackages>true</RestorePackages>
   </PropertyGroup>
   <PropertyGroup Condition=" '$(Configuration)|$(Platform)' == 'Debug|AnyCPU' ">
     <DebugSymbols>true</DebugSymbols>
@@ -38,7 +40,9 @@
     <PlatformTarget>x86</PlatformTarget>
   </PropertyGroup>
   <ItemGroup>
-    <Reference Include="nunit.framework" />
+    <Reference Include="nunit.framework">
+      <HintPath>..\packages\NUnit.2.6.0.12054\lib\nunit.framework.dll</HintPath>
+    </Reference>
     <Reference Include="System">
     </Reference>
     <Reference Include="System.Core" />
@@ -66,6 +70,9 @@
     <Compile Include="Manos.Routing\HtmlFormDataTypeConverterTest.cs" />
   </ItemGroup>
   <ItemGroup />
+    <Target Name="ListSources">
+          <Message Text="@(Compile)" Importance="High" />
+            </Target>
   <ItemGroup>
     <ProjectReference Include="..\Manos\Manos.csproj">
       <Project>{2548B25A-2E1F-4E21-BC43-7E39B1F6F23F}</Project>
@@ -76,5 +83,7 @@
   <ItemGroup>
     <None Include="Manos.Template\CodegenTest.cs" />
     <None Include="Manos.Template\TemplateFactoryTest.cs" />
+    <None Include="packages.config" />
   </ItemGroup>
+  <Import Project="$(SolutionDir)\.nuget\nuget.targets" />
 </Project>
