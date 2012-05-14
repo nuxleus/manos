@@ -1,7 +1,7 @@
 
-manosdir=$(bindir)
+programfilesdir = @libdir@/@PACKAGE@/
 
-pkglib_DATA = $(top_srcdir)/build/manostool.exe
+programfiles_DATA = $(top_srcdir)/build/manostool.exe
 
 manos_proj_file = manostool.csproj
 manos_sources_in = AssemblyInfo.cs.in

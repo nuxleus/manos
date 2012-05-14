@@ -185,6 +185,9 @@ namespace Manos.Tool
 			string manosdll = Path.Combine (Environment.ManosDirectory, "Manos.dll");
 			libs.Add (manosdll);
 
+      string manosiodll = Path.Combine(Environment.ManosDirectory, "Manos.IO.dll");
+      libs.Add(manosiodll);
+
 			string ninidll = Path.Combine (Environment.ManosDirectory, "Nini.dll");
 			libs.Add (ninidll);
 		}
